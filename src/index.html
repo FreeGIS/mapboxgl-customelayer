@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="utf-8">
+  <meta name="description" content="MapboxGL CustomeLayer">
+  <meta name="author" content="Austin Eng">
+  <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+  <title>
+    <%= htmlWebpackPlugin.options.title %>
+  </title>
+  <link href="https://fonts.googleapis.com/css?family=Inconsolata&display=swap" rel="stylesheet">
+  <link href="https://api.mapbox.com/mapbox-gl-js/v2.6.1/mapbox-gl.css" rel="stylesheet">
+  <script src="https://api.mapbox.com/mapbox-gl-js/v2.6.1/mapbox-gl.js"></script>
+
+  <style>
+    * {
+      box-sizing: border-box;
+    }
+
+    html,
+    body {
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      display: flex;
+      font-family: 'Inconsolata', monospace;
+    }
+
+    .container {
+      padding-left: 15px;
+      padding-right: 15px;
+    }
+
+    a {
+      text-decoration: none;
+    }
+
+    a:link,
+    a:visited {
+      color: #045b88;
+    }
+
+    a:hover {
+      text-decoration: underline;
+    }
+
+    #panel {
+      position: relative;
+      left: 0px;
+      flex: 1;
+      max-width: 300px;
+      height: 100vh;
+      overflow: auto;
+      background: #fafafa;
+    }
+
+    #map {
+      position: relative;
+      flex: 1;
+      top: 0;
+      bottom: 0;
+      left: 0px;
+      right: 0px;
+      overflow: auto;
+    }
+
+    .example-link {
+      display: block;
+      padding: 0.3em 0;
+    }
+
+    @media only screen and (max-width: 768px) {
+
+      /* More padding on mobile for easier touch screen use */
+      .example-link {
+        padding: 0.8em 0;
+      }
+    }
+
+    .example-link.selected {
+      color: #ff0000;
+    }
+
+
+    main.no-demo {
+      background: white;
+    }
+  </style>
+</head>
+
+<body>
+  <div id="panel">
+    <div class="container">
+      <h1 id="title"><a href="./#" class="nav-link">
+          <%= htmlWebpackPlugin.options.title %>
+        </a></h1>
+      <hr />
+      <% for (example of htmlWebpackPlugin.options.examples) { %>
+        <a class="example-link nav-link" href="?#<%= example %>">
+          <%= example %>
+        </a>
+        <% } %>
+          <hr />
+
+    </div>
+
+  </div>
+</body>
+
+</html>
