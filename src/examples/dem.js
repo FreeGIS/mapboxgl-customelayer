@@ -12,7 +12,7 @@ const demHeaders = [
     399650.000000, 3997530.000000, 10.000000, -10.000000, 78, 240
 ];
 const dataEPSG = 32612;
-proj4.defs("EPSG:32612", "+proj=utm +zone=12 +datum=WGS84 +units=m +no_defs");
+proj4.defs(`EPSG:${dataEPSG}`, "+proj=utm +zone=12 +datum=WGS84 +units=m +no_defs");
 // 需要将demData首先转WGS84经纬度再转墨卡托0-1坐标系
 function dataParse() {
     const length = demData.length;
@@ -20,7 +20,7 @@ function dataParse() {
     let color = new Float32Array(length / 3);
     for (let i = 0; i < length; i = i + 9) {
         const coors = [demHeaders[0] + demData[i], demHeaders[1] + demData[i + 1]];
-        const wgs84Coor = proj4('EPSG:32612', 'EPSG:4326').forward(coors);
+        const wgs84Coor = proj4(`EPSG:${dataEPSG}`, 'EPSG:4326').forward(coors);
         const mktCoor = fromLngLat(wgs84Coor, demData[i + 2]);
         // 转换顶点数组的相对序号
         let _index = i / 3;
