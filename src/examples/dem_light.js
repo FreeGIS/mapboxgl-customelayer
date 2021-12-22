@@ -5,9 +5,7 @@ import { createModel, createBuffer, bindAttribute, createIndicesBuffer } from '.
 import { vec3 } from 'gl-matrix';
 import getNormal from '../util/getNormal';
 import proj4 from 'proj4';
-import demData from '../../datas/dem.json';
-// demData 数据每9个一组，每组元数据如下
-// 与起点X距离 与起点Y距离 高程值 颜色R 颜色G 颜色B 法向量X坐标 法向量Y坐标 法向量Z坐标
+import { GET } from '../util/request';
 
 // 头文件 起点X坐标 起点Y坐标 X间距 Y间距 宽 高
 const demHeaders = [
@@ -16,7 +14,9 @@ const demHeaders = [
 const dataEPSG = 32612;
 proj4.defs(`EPSG:${dataEPSG}`, "+proj=utm +zone=12 +datum=WGS84 +units=m +no_defs");
 // 需要将demData首先转WGS84经纬度再转墨卡托0-1坐标系
-function dataParse() {
+function dataParse(demData) {
+    // demData 数据每9个一组，每组元数据如下
+    // 与起点X距离 与起点Y距离 高程值 颜色R 颜色G 颜色B 法向量X坐标 法向量Y坐标 法向量Z坐标
     const length = demData.length;
     let pos = new Float32Array(length / 3);
     let color = new Float32Array(length / 3);
@@ -259,13 +259,15 @@ class DemLayer {
 
 
 export async function run(mapdiv, gui = null) {
+    // 请求测试数据
+    const demData = await GET('./datas/dem.json', 'json');
     // 初始化地图
     let baseMap = 'vector';
-    const map = initMap(mapdiv, baseMap, [-112.11505254567393, 36.117259614117756], 10);
+    const map = initMap(mapdiv, baseMap, [-112.11405254567393, 36.107259614117756], 13);
     // 数据处理，转换坐标系
-    const demdata = dataParse();
+    const demWebglInfo = dataParse(demData);
     // 构造图层
-    const demLayer = new DemLayer(demdata);
+    const demLayer = new DemLayer(demWebglInfo);
     map.on('load', function () {
         map.addLayer(demLayer);
     });
