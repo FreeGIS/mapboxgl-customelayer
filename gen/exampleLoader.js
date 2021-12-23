@@ -1,5 +1,11 @@
 
 
+  export const hello_triangle = async () => (await import('../src/examples/hello_triangle'));
+  
+
+  export const indices = async () => (await import('../src/examples/indices'));
+  
+
   export const dem = async () => (await import('../src/examples/dem'));
   
 

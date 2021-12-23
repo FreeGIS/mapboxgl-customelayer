@@ -96,7 +96,7 @@ class UVLayer {
         bindAttribute(gl, uvBuffer, 1, 2);
 
         // 顶点索引，unit8array对应gl.UNSIGNED_BYTE
-        this._elementType = createIndicesBuffer(gl, indices, mktPositionBuffer.length);
+        this._elementType = createIndicesBuffer(gl, indices, mktPositionBuffer.length / 2);
         this._positionCount = indices.length;
         // 绑定结束        
         gl.bindBuffer(gl.ARRAY_BUFFER, null);

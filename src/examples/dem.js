@@ -104,7 +104,7 @@ class DemLayer {
         const colorBuffer = createBuffer(gl, gl.ARRAY_BUFFER, new Float32Array(this._demData.color));
         bindAttribute(gl, colorBuffer, 1, 3);
         // 顶点索引，unit8array对应gl.UNSIGNED_BYTE
-        this._elementType = createIndicesBuffer(gl, this._demData.indices, this._demData.pos.length);
+        this._elementType = createIndicesBuffer(gl, this._demData.indices, this._demData.pos.length / 3);
         this._positionCount = this._demData.indices.length;
         // 绑定结束        
         gl.bindBuffer(gl.ARRAY_BUFFER, null);

@@ -74,7 +74,7 @@ class GeoUVLayer {
         bindAttribute(gl, uvBuffer, 1, 2);
 
         // 顶点索引，unit8array对应gl.UNSIGNED_BYTE
-        this._elementType = createIndicesBuffer(gl, trigs, pos.length);
+        this._elementType = createIndicesBuffer(gl, trigs, pos.length / 2);
         this._positionCount = trigs.length;
         // 绑定结束        
         gl.bindBuffer(gl.ARRAY_BUFFER, null);
