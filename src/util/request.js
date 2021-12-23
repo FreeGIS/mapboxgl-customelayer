@@ -14,4 +14,17 @@ function GET(url, type) {
         xhr.send();
     });
 }
-export { GET };
+
+function loadImage(img_src) {
+    return new Promise((res, rej) => {
+        let img = new Image();
+        img.src = img_src;
+        img.onload = function () {
+            res(img);
+        }
+        img.onerror = function () {
+            rej('error');
+        }
+    });
+}
+export { GET, loadImage };
