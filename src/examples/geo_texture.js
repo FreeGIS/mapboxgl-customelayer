@@ -5,22 +5,12 @@ import { createModel, createBuffer, bindAttribute, createIndicesBuffer, createTe
 import proj4 from 'proj4';
 import { loadImage } from '../util/request';
 import textureReprojection from '../util/textureReprojection';
-// 头文件 起点X坐标 起点Y坐标 X间距 Y间距 宽 高
-const demHeaders = [
-    399650.000000, 3997530.000000, 10.000000, -10.000000, 78, 240
-];
-// 根据头文件计算地理bbox
-const minx = demHeaders[0], maxy = demHeaders[1];
-const maxx = minx + demHeaders[4] * (demHeaders[2] - 1);
-const miny = maxy + demHeaders[5] * (demHeaders[3] - 1);
+
 // 先转84坐标系
 const dataEPSG = 32612;
 proj4.defs(`EPSG:${dataEPSG}`, "+proj=utm +zone=12 +datum=WGS84 +units=m +no_defs");
 // 地理四至
-const bbox = [minx, miny, maxx, maxy];
-
-const bbox1 = [399650, 3995140, 400420, 3997530];
-console.log(bbox,bbox1);
+const bbox = [399650, 3995140, 400420, 3997530];
 
 class GeoUVLayer {
     constructor(demImage, geoBounds) {
@@ -135,7 +125,7 @@ export async function run(mapdiv, gui = null) {
     const map = initMap(mapdiv, baseMap, [-112.11405254567393, 36.107259614117756], 13);
 
     // 构造图层
-    const geouvLayer = new GeoUVLayer(demImage, bbox1);
+    const geouvLayer = new GeoUVLayer(demImage, bbox);
     map.on('load', function () {
         map.addLayer(geouvLayer);
     });
