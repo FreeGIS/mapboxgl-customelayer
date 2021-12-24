@@ -127,6 +127,9 @@ class DemLayer {
         //如果取消绑定，会报错GL_INVALID_OPERATION: Insufficient buffer size.
         gl.bindVertexArray(null);
     }
+    onRemove(map, gl) {
+        gl.deleteProgram(this._drawModel.program);
+    }
 }
 
 
