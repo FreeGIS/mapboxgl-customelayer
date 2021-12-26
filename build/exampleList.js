@@ -5,4 +5,5 @@ module.exports = [
     './examples/geo_texture',
     './examples/dem',
     './examples/dem_light',
+    './examples/dem_texture',
 ];

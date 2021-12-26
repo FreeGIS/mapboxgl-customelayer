@@ -55,8 +55,7 @@ class GeoUVLayer {
         uniform sampler2D u_texture;
         out vec4 outColor;
         void main() {
-            vec4 aaa = texture(u_texture, v_uv);
-            outColor = vec4(aaa.xyz*0.75,0.75);
+            outColor = texture(u_texture, v_uv);
         }`;
         this._drawModel = createModel(gl, vs, fs);
         // 创建vao

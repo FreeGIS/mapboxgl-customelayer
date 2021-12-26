@@ -17,3 +17,6 @@
 
   export const dem_light = async () => (await import('../src/examples/dem_light'));
   
+
+  export const dem_texture = async () => (await import('../src/examples/dem_texture'));
+  
