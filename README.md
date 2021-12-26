@@ -40,6 +40,8 @@ npm run serve
 
 参考[《使用WebGL2进行Mapbox自定义图层开发》](https://mp.weixin.qq.com/s?__biz=Mzg2OTUxMzM2MA==&mid=2247483684&idx=1&sn=cbec2c833fa0a2a30e3ee0d6063fbf0c&chksm=ce9aa0dbf9ed29cd1b65bebf5e773eb8b4005c3d347b033426d0c4b65807ab74934268d9df88&token=192320095&lang=zh_CN#rd)
 
+![三角形](https://github.com/FreeGIS/mapboxgl-customelayer/blob/master/docs/triangle.png)
+
 2 顶点索引
 
 3 uv纹理
