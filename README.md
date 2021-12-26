@@ -44,10 +44,27 @@ npm run serve
 
 2 顶点索引
 
+![顶点索引](https://github.com/FreeGIS/mapboxgl-customelayer/blob/master/docs/indices.png)
+
+
 3 uv纹理
+
+![uv纹理](https://github.com/FreeGIS/mapboxgl-customelayer/blob/master/docs/uv_texture.png)
+
 
 4 地理坐标系纹理
 
+![地理坐标系纹理](https://github.com/FreeGIS/mapboxgl-customelayer/blob/master/docs/geo_texture.png)
+
 5 地形
 
+![地形](https://github.com/FreeGIS/mapboxgl-customelayer/blob/master/docs/dem.png)
+
 6 地形光照
+
+![地形光照](https://github.com/FreeGIS/mapboxgl-customelayer/blob/master/docs/dem_light.png)
+
+7 地形纹理
+
+![地形纹理](https://github.com/FreeGIS/mapboxgl-customelayer/blob/master/docs/dem_texture.png)
+
