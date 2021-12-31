@@ -9,7 +9,7 @@ function removeClassName(el, className) {
 
 async function loadExample(hashName) {
     const name = hashName.substring(1);
-    const exampleLoader = examples[ name ];
+    const exampleLoader = examples[name];
     if (!exampleLoader) {
         return;
     }
@@ -23,11 +23,14 @@ async function loadExample(hashName) {
     document.body.appendChild(mapdiv);
 
     if (gui) {
-        const div = document.getElementsByClassName('dg ac')[0];
-        if(div)
-            document.body.removeChild(div);
+        const parentdiv = document.getElementsByClassName('dg ac')[0];
+        const div = document.getElementsByClassName('dg main a')[0];
+        if (parentdiv && div)
+            parentdiv.removeChild(div);
     }
     gui = new dat.GUI();
+    const div = document.getElementsByClassName('dg main a')[0];
+    div.setAttribute("style", "z-index:9999");
     const example = await exampleLoader();
 
     await example.run('map', gui);

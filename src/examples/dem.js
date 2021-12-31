@@ -3,27 +3,27 @@ import fromLngLat from '../util/fromLonLat';
 import uuid from '../util/uuid';
 import { createModel, createBuffer, bindAttribute, createIndicesBuffer } from '../util/webgl_util';
 import proj4 from 'proj4';
-import demData from '../../datas/dem.json';
-// demData 数据每6个一组，每组元数据如下
-// 与起点X距离 与起点Y距离 高程值 颜色R 颜色G 颜色B  
-//法向量X坐标 法向量Y坐标 法向量Z坐标
-// 起点X坐标 起点Y坐标 X间距 Y间距 宽 高
+import { GET } from '../util/request';
+
+// 头文件 起点X坐标 起点Y坐标 X间距 Y间距 宽 高
 const demHeaders = [
     399650.000000, 3997530.000000, 10.000000, -10.000000, 78, 240
 ];
 const dataEPSG = 32612;
-proj4.defs("EPSG:32612", "+proj=utm +zone=12 +datum=WGS84 +units=m +no_defs");
+proj4.defs(`EPSG:${dataEPSG}`, "+proj=utm +zone=12 +datum=WGS84 +units=m +no_defs");
 // 需要将demData首先转WGS84经纬度再转墨卡托0-1坐标系
-function dataParse() {
+function dataParse(demData) {
+    // demData 数据每9个一组，每组元数据如下
+    // 与起点X距离 与起点Y距离 高程值 颜色R 颜色G 颜色B 法向量X坐标 法向量Y坐标 法向量Z坐标
     const length = demData.length;
-    let pos = new Float32Array(length / 2);
-    let color = new Float32Array(length / 2);
-    for (let i = 0; i < length; i = i + 6) {
+    let pos = new Float32Array(length / 3);
+    let color = new Float32Array(length / 3);
+    for (let i = 0; i < length; i = i + 9) {
         const coors = [demHeaders[0] + demData[i], demHeaders[1] + demData[i + 1]];
-        const wgs84Coor = proj4('EPSG:32612', 'EPSG:4326').forward(coors);
+        const wgs84Coor = proj4(`EPSG:${dataEPSG}`, 'EPSG:4326').forward(coors);
         const mktCoor = fromLngLat(wgs84Coor, demData[i + 2]);
         // 转换顶点数组的相对序号
-        let _index = i / 2;
+        let _index = i / 3;
         pos[_index] = mktCoor.x;
         pos[_index + 1] = mktCoor.y;
         pos[_index + 2] = mktCoor.z;
@@ -104,7 +104,7 @@ class DemLayer {
         const colorBuffer = createBuffer(gl, gl.ARRAY_BUFFER, new Float32Array(this._demData.color));
         bindAttribute(gl, colorBuffer, 1, 3);
         // 顶点索引，unit8array对应gl.UNSIGNED_BYTE
-        this._elementType = createIndicesBuffer(gl, this._demData.indices, this._demData.pos.length);
+        this._elementType = createIndicesBuffer(gl, this._demData.indices, this._demData.pos.length / 3);
         this._positionCount = this._demData.indices.length;
         // 绑定结束        
         gl.bindBuffer(gl.ARRAY_BUFFER, null);
@@ -127,17 +127,22 @@ class DemLayer {
         //如果取消绑定，会报错GL_INVALID_OPERATION: Insufficient buffer size.
         gl.bindVertexArray(null);
     }
+    onRemove(map, gl) {
+        gl.deleteProgram(this._drawModel.program);
+    }
 }
 
 
 export async function run(mapdiv, gui = null) {
+    // 请求测试数据
+    const demData = await GET('./datas/dem.json', 'json');
     // 初始化地图
     let baseMap = 'vector';
-    const map = initMap(mapdiv, baseMap, [-112.11505254567393, 36.117259614117756], 10);
+    const map = initMap(mapdiv, baseMap, [-112.11405254567393, 36.107259614117756], 13);
     // 数据处理，转换坐标系
-    const demdata = dataParse();
+    const demWebglInfo = dataParse(demData);
     // 构造图层
-    const demLayer = new DemLayer(demdata);
+    const demLayer = new DemLayer(demWebglInfo);
     map.on('load', function () {
         map.addLayer(demLayer);
     });

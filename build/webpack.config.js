@@ -89,7 +89,7 @@ module.exports = {
   },
   plugins: [
     new HtmlWebpackPlugin({
-      title: 'CustomeLayer教程',
+      title: 'CustomeLayer学习',
       filename: '../index.html',
       template: path.resolve(__dirname, '../src/index.html'),
       examples: exampleNames,
