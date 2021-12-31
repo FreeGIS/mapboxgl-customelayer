@@ -325,7 +325,7 @@ class DemLayer {
         gl.uniformMatrix4fv(this._drawFboModel.u_worldViewProjection, false, matrix);
         //绑定顶点vao
         gl.bindVertexArray(this._drawFboInfo.vao);
-        gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT); // Clear FBO
+        gl.clear(gl.DEPTH_BUFFER_BIT); // Clear FBO
         gl.drawElements(gl.TRIANGLES, this._positionCount, this._elementType, 0);
         //如果取消绑定，会报错GL_INVALID_OPERATION: Insufficient buffer size.
         gl.bindVertexArray(null);

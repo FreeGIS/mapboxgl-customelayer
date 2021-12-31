@@ -9,6 +9,9 @@
   export const uv_texture = async () => (await import('../src/examples/uv_texture'));
   
 
+  export const depthtest = async () => (await import('../src/examples/depthtest'));
+  
+
   export const geo_texture = async () => (await import('../src/examples/geo_texture'));
   
 
@@ -21,5 +24,5 @@
   export const dem_texture = async () => (await import('../src/examples/dem_texture'));
   
 
-  export const depthtest = async () => (await import('../src/examples/depthtest'));
+  export const dem_fbo = async () => (await import('../src/examples/dem_fbo'));
   
