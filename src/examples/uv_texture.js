@@ -109,9 +109,6 @@ class UVLayer {
             internalFormat: gl.RGBA,//webgl中格式
             srcFormat: gl.RGBA,//输入数据源格式
             type: gl.UNSIGNED_BYTE,
-            pixelStore: {
-                [gl.UNPACK_ALIGNMENT]: 1
-            },
             parameters: {
                 [gl.TEXTURE_MAG_FILTER]: gl.LINEAR,
                 [gl.TEXTURE_MIN_FILTER]: gl.LINEAR,
