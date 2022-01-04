@@ -7,5 +7,6 @@ module.exports = [
     './examples/dem',
     './examples/dem_light',
     './examples/dem_texture',
-    './examples/dem_fbo'
+    './examples/dem_fbo',
+    './examples/oit'
 ];
