@@ -23,3 +23,6 @@
 
   export const depthtest = async () => (await import('../src/examples/depthtest'));
   
+
+  export const oit = async () => (await import('../src/examples/oit'));
+  

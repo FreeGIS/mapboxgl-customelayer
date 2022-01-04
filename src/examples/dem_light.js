@@ -25,7 +25,7 @@ function dataParse(demData) {
     for (let i = 0; i < length; i = i + 9) {
         const coors = [demHeaders[0] + demData[i], demHeaders[1] + demData[i + 1]];
         const wgs84Coor = proj4(`EPSG:${dataEPSG}`, 'EPSG:4326').forward(coors);
-        //const coor3857 = proj4(`EPSG:${dataEPSG}`, 'EPSG:3857').forward(coors);
+        const coor3857 = proj4(`EPSG:${dataEPSG}`, 'EPSG:3857').forward(coors);
 
         const mktCoor = fromLngLat(wgs84Coor, demData[i + 2]);
         // 转换顶点数组的相对序号
@@ -34,13 +34,14 @@ function dataParse(demData) {
         originCoors[_index] = coors[0];
         originCoors[_index + 1] = coors[1];
         // 2 用墨卡托投影后的坐标算，可以
+        // originCoors[_index] = coor3857[0];
+        // originCoors[_index + 1] = coor3857[1];
         // 3 用mapboxgl 的0-1墨卡托算 ，不可以
         // 0-1下世界坐标系被缩放了， 需要计算世界坐标系的逆矩阵转置矩阵，用于着色器反算法向量。
         // 得理解mapboxgl的0-1的xyz坐标系计算规则
         // 4 用经纬度+高度的坐标计算，不可以
 
-        //originCoors[_index] = coor3857[0];
-        //originCoors[_index + 1] = coor3857[1];
+      
         // 原始坐标的平移不影响，投影和缩放影响法向量。
         //originCoors[_index] = demData[i];
         //originCoors[_index + 1] = demData[i + 1];
