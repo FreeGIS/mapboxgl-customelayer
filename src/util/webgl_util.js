@@ -74,6 +74,8 @@ export function createModel(gl, vertexSource, fragmentSource, transformFeedbackV
 export function createTexture2D(gl, textureDesc) {
     const texture = gl.createTexture();
     gl.bindTexture(gl.TEXTURE_2D, texture);
+    // 告诉 WebGL 一次处理 1 个字节，在unit8Array时候必须写。
+    // [gl.UNPACK_ALIGNMENT]: 1
     for (let key in textureDesc.pixelStore) {
         gl.pixelStorei(key, textureDesc.pixelStore[key]);
     }
