@@ -26,3 +26,6 @@
 
   export const dem_fbo = async () => (await import('../src/examples/dem_fbo'));
   
+
+  export const dem_shadow = async () => (await import('../src/examples/dem_shadow'));
+  
