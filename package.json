@@ -8,13 +8,14 @@
     "url": ""
   },
   "scripts": {
-    "build": "rm -rf dist gen && webpack --config build/webpack.config.js",
+    "build": "webpack --config build/webpack.config.js",
     "start": "webpack-dev-server --config build/webpack.config.js --open",
     "serve": "http-server"
   },
   "dependencies": {
     "@mapbox/point-geometry": "^0.1.0",
     "arrugator": "^1.0.1",
+    "clean-webpack-plugin": "^4.0.0",
     "dat.gui": "^0.7.7",
     "earcut": "^2.2.2",
     "gl-matrix": "^3.3.0",
