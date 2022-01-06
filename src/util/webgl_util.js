@@ -162,10 +162,10 @@ export function createIndicesBuffer(gl, indices, posCount) {
     }
 }
 
-export function bindAttribute(gl, buffer, attribute, numComponents) {
+export function bindAttribute(gl, buffer, attributeLoc, numComponents) {
     gl.bindBuffer(gl.ARRAY_BUFFER, buffer);
-    gl.enableVertexAttribArray(attribute);
-    gl.vertexAttribPointer(attribute, numComponents, gl.FLOAT, false, 0, 0);
+    gl.enableVertexAttribArray(attributeLoc);
+    gl.vertexAttribPointer(attributeLoc, numComponents, gl.FLOAT, false, 0, 0);
 }
 
 

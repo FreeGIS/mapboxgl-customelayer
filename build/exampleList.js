@@ -2,6 +2,8 @@ module.exports = [
     './examples/hello_triangle',
     './examples/indices',
     './examples/uv_texture',
+    './examples/rotation',
+    './examples/instanced',
     './examples/depthtest',
     './examples/geo_texture',
     './examples/dem',
