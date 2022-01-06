@@ -29,3 +29,6 @@
 
   export const oit = async () => (await import('../src/examples/oit'));
   
+
+  export const instanced = async () => (await import('../src/examples/instanced'));
+  

@@ -15,7 +15,7 @@ function initMap(mapdiv, baseMapType, center, zoom) {
         zoom: zoom,
         antialias: true
     });
-    map.addControl(new mapboxgl.NavigationControl(), 'top-left');
+    map.addControl(new mapboxgl.NavigationControl(), 'top-right');
     return map;
 }
 
