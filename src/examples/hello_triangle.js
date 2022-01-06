@@ -73,7 +73,7 @@ class CustomeLayer {
         gl.uniformMatrix4fv(this._drawModel.uPMatrix, false, matrix);
         //绑定顶点vao
         gl.bindVertexArray(this._vao);
-        gl.drawArrays(gl.TRIANGLE_STRIP, 0, 3);
+        gl.drawArrays(gl.TRIANGLES, 0, 3);
         //如果取消绑定，会报错GL_INVALID_OPERATION: Insufficient buffer size.
         gl.bindVertexArray(null);
     }
