@@ -1,10 +1,15 @@
 import uuid from '../util/uuid';
 import { createModel, createBuffer, createIndicesBuffer, bindAttribute, bindTexture2D } from '../util/webgl_util';
-import { vec3 } from 'gl-matrix';
+import { vec3, vec4, mat4 } from 'gl-matrix';
 import fromLngLat from '../util/fromLonLat';
 import getNormal from '../util/getNormal';
 import proj4 from 'proj4';
 import initMap from '../util/initMap';
+import { createSphere } from '../util/sphere';
+import { loadImage } from '../util/request';
+
+
+
 
 const vertexAccum = `#version 300 es
 layout(location=0) in vec3 position;
@@ -104,10 +109,11 @@ void main() {
 }`;
 
 //三维等值面
-class OitTestLayer {
-    constructor() {
+class OitLayer {
+    constructor(image, sphere) {
         this._id = uuid();
-
+        this._image = image;
+        this._sphere = sphere;
         // 默认的光源方位角和高度角  设置光线方向(世界坐标系下的)
         this._solarAltitude = 45.0;
         // 方位角以正南方向为0，由南向东向北为负，有南向西向北为正
@@ -159,205 +165,134 @@ class OitTestLayer {
         //设置环境光
         // gl.uniform3f(this._drawFboModel.u_AmbientLight, 0.2, 0.2, 0.2);
     }
-    //图层初始化
-    initialize(map, gl) {
-        /////////////////////////
-        // PROGRAM
-        /////////////////////////
-        this.accumModel = createModel(gl, vertexAccum, fragmentAccum);
-        this.drawModel = createModel(gl, vertexQuad, fragmentDraw);
-        ////////////////////////////////
-        //  SET UP FRAMEBUFFERS
-        ////////////////////////////////
-        let accumBuffer = gl.createFramebuffer();
-        gl.bindFramebuffer(gl.FRAMEBUFFER, accumBuffer);
-        this.accumTarget = gl.createTexture();
-        gl.bindTexture(gl.TEXTURE_2D, this.accumTarget);
-        gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, false);
-        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
-        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
-        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
-        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
-        gl.texStorage2D(gl.TEXTURE_2D, 1, gl.RGBA16F, gl.drawingBufferWidth, gl.drawingBufferHeight);
-        gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, this.accumTarget, 0);
+    // 设置图形
+    setGeometry() {
+        const gl = this.gl;
+        // 测试32个球
+        let NUM_SPHERES = 32;
+        this.numInstances = NUM_SPHERES;
+        // 每行8个球
+        let NUM_PER_ROW = 8;
+        // 为了能在地图0-1坐标系显示，统一缩放下图形比例
+        const geomScale = 1;
+        // 球半径设置0.6
+        let RADIUS = 0.6 * geomScale;
+        this.spheres = new Array(NUM_SPHERES);
+        let colorData = new Float32Array(NUM_SPHERES * 4);
+        this.modelMatrixData = new Float32Array(NUM_SPHERES * 16);
 
-        this.accumAlphaTarget = gl.createTexture();
-        gl.bindTexture(gl.TEXTURE_2D, this.accumAlphaTarget);
-        gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, false);
-        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
-        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
-        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
-        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
-        gl.texStorage2D(gl.TEXTURE_2D, 1, gl.R16F, gl.drawingBufferWidth, gl.drawingBufferHeight);
-        gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT1, gl.TEXTURE_2D, this.accumAlphaTarget, 0);
-        gl.drawBuffers([
-            gl.COLOR_ATTACHMENT0,
-            gl.COLOR_ATTACHMENT1
-        ]);
-        gl.bindFramebuffer(gl.FRAMEBUFFER, null);
-        this.accumBuffer = accumBuffer;
-        //设置vao
-        /////////////////////////
-        // 测试数据
-        /////////////////////////
-        const positions = [
-            117, 32, 0,
-            118, 32, 0,
-            117, 32, 10000,
-            118, 32, 10000,
-            117, 33, 0,
-            118, 33, 0,
-            117, 33, 10000,
-            118, 33, 10000,
-            117.2, 32.2, 1000,
-            117.8, 32.2, 1000,
-            117.2, 32.2, 9000,
-            117.8, 32.2, 9000,
-            117.2, 32.8, 1000,
-            117.8, 32.8, 1000,
-            117.2, 32.8, 9000,
-            117.8, 32.8, 9000
-        ];
+        for (let i = 0; i < NUM_SPHERES; ++i) {
+            let angle = 2 * Math.PI * (i % NUM_PER_ROW) / NUM_PER_ROW;
+            let x = Math.sin(angle) * RADIUS;
+            let y = (Math.floor(i / NUM_PER_ROW) / (NUM_PER_ROW / 4) - 0.75) * geomScale;
+            let z = Math.cos(angle) * RADIUS;
+            this.spheres[ i ] = {
+                scale: [ 0.8, 0.8, 0.8 ],
+                rotate: [ 0, 0, 0 ], // Will be used for global rotation
+                translate: [ x, y, z ],
+                modelMatrix: mat4.create()
+            };
 
-        const indices = [
-            0, 1, 2,
-            2, 1, 3,
-            1, 5, 3,
-            3, 5, 7,
-            0, 2, 4,
-            2, 6, 4,
-            4, 6, 5,
-            6, 7, 5,
-            2, 6, 3,
-            6, 7, 3,
-            0, 4, 1,
-            4, 5, 1,
-
-            8, 9, 10,
-            10, 9, 11,
-            9, 13, 11,
-            11, 13, 15,
-            8, 10, 12,
-            10, 14, 12,
-            12, 14, 13,
-            14, 15, 13,
-            10, 14, 11,
-            14, 15, 11,
-            8, 12, 9,
-            12, 13, 9
-        ];
-        //地图上，预乘alpha
-        const colors = [
-            0.2, 0, 0, 0.2,
-            0.2, 0, 0, 0.2,
-            0.2, 0, 0, 0.2,
-            0.2, 0, 0, 0.2,
-            0.2, 0, 0, 0.2,
-            0.2, 0, 0, 0.2,
-            0.2, 0, 0, 0.2,
-            0.2, 0, 0, 0.2,
-            0, 0.3, 0, 0.3,
-            0, 0.3, 0, 0.3,
-            0, 0.3, 0, 0.3,
-            0, 0.3, 0, 0.3,
-            0, 0.3, 0, 0.3,
-            0, 0.3, 0, 0.3,
-            0, 0.3, 0, 0.3,
-            0, 0.3, 0, 0.3
-        ];
-
-        // 计算法向量，使用mkt投用算
-        const position_length = positions.length;
-        // 墨卡托坐标，计算法向量用
-        let coors3857 = new Array(position_length);
-        // 0-1 mkt坐标，顶点着色器使用
-        let geoCoors = new Float32Array(position_length);
-        for (let i = 0; i < position_length; i = i + 3) {
-            const coor3857 = proj4('EPSG:4326', 'EPSG:3857').forward([ positions[ i ], positions[ i + 1 ] ]);
-            coors3857[ i ] = coor3857[ 0 ];
-            coors3857[ i + 1 ] = coor3857[ 1 ];
-            coors3857[ i + 2 ] = positions[ i + 2 ];
-
-            const geos = fromLngLat([ positions[ i ], positions[ i + 1 ] ], positions[ i + 2 ]);
-            geoCoors[ i ] = geos.x;
-            geoCoors[ i + 1 ] = geos.y;
-            geoCoors[ i + 2 ] = geos.z;
+            colorData.set(vec4.fromValues(
+                Math.sqrt(Math.random()),
+                Math.sqrt(Math.random()),
+                Math.sqrt(Math.random()),
+                0.5
+            ), i * 4);
         }
 
-        const indicesLength = indices.length;
-        let normal = new Float32Array(position_length);
-        for (let i = 0; i < indicesLength; i = i + 3) {
-            const a_index = indices[ i ];
-            const b_index = indices[ i + 1 ];
-            const c_index = indices[ i + 2 ];
-            const a_coorIndex = a_index * 3;
-            const b_coorIndex = b_index * 3;
-            const c_coorIndex = c_index * 3;
-            // 原始坐标计算法向量，不能使用投影转换后的坐标转换
-            const point_a = [ coors3857[ a_coorIndex ], coors3857[ a_coorIndex + 1 ], coors3857[ a_coorIndex + 2 ] ];
-            const point_b = [ coors3857[ b_coorIndex ], coors3857[ b_coorIndex + 1 ], coors3857[ b_coorIndex + 2 ] ];
-            const point_c = [ coors3857[ c_coorIndex ], coors3857[ c_coorIndex + 1 ], coors3857[ c_coorIndex + 2 ] ];
-            const d = getNormal(point_a, point_b, point_c);
-            // 分别记录三个顶点的法向量，用于向量相加（所谓的平均就是顶点的各个法向量相加，所谓平均就是最后的结果归一化即可）
-            // 没有采用面积加权，查询部分资料认为效果不好似无必要。
-            normal[ a_index * 3 ] += d[ 0 ];
-            normal[ a_index * 3 + 1 ] += d[ 1 ];
-            normal[ a_index * 3 + 2 ] += d[ 2 ];
-            normal[ b_index * 3 ] += d[ 0 ];
-            normal[ b_index * 3 + 1 ] += d[ 1 ];
-            normal[ b_index * 3 + 2 ] += d[ 2 ];
+        let sphere = createSphere({ radius: 0.5 * geomScale });
+        // 每个球的顶点数量
+        this.numVertices = sphere.positions.length / 3;
 
-            normal[ c_index * 3 ] += d[ 0 ];
-            normal[ c_index * 3 + 1 ] += d[ 1 ];
-            normal[ c_index * 3 + 2 ] += d[ 2 ];
+        // 平移球顶点到118、32为中心，并转换成0-1坐标系下
+        for (let i = 0; i < this.numVertices; i++) {
+            const index = i * 3;
+            const geos = fromLngLat([ sphere.positions[ index ] + 118, sphere.positions[ index + 1 ] + 32 ]);
+            sphere.positions[ index ] = geos.x;
+            sphere.positions[ index + 1 ] = geos.y;
+            // sphere.positions[ index + 2 ] = geos.z;
         }
-        // 应该根据面积加权平均，这里格点比较均匀，直接平均测试，求单位向量
-        for (let i = 0; i < normal.length; i = i + 3) {
-            const d_normal = vec3.normalize([], vec3.fromValues(normal[ i ], normal[ i + 1 ], normal[ i + 2 ]));
-            normal[ i ] = d_normal[ 0 ];
-            normal[ i + 1 ] = d_normal[ 1 ];
-            normal[ i + 2 ] = d_normal[ 2 ];
-        }
-        // 根据测试数据构造vao
-        this.vao1 = gl.createVertexArray();
-        gl.bindVertexArray(this.vao1);
-        // 绑定坐标顶点
-        const positionBuffer = createBuffer(gl, gl.ARRAY_BUFFER, geoCoors);
+
+        this.sphereVAO = gl.createVertexArray();
+        gl.bindVertexArray(this.sphereVAO);
+
+        const positionBuffer = createBuffer(gl, gl.ARRAY_BUFFER, sphere.positions);
         bindAttribute(gl, positionBuffer, 0, 3);
-        // 绑定坐标顶点
-        const colorBuffer = createBuffer(gl, gl.ARRAY_BUFFER, new Float32Array(colors));
-        bindAttribute(gl, colorBuffer, 1, 4);
-        // 绑定法向量
-        const normalBuffer = createBuffer(gl, gl.ARRAY_BUFFER, normal);
+
+        const uvBuffer = createBuffer(gl, gl.ARRAY_BUFFER, sphere.uvs);
+        bindAttribute(gl, uvBuffer, 1, 2);
+
+        const normalBuffer = createBuffer(gl, gl.ARRAY_BUFFER, sphere.normals);
         bindAttribute(gl, normalBuffer, 2, 3);
-        // 顶点索引，unit8array对应gl.UNSIGNED_BYTE
-        this._elementType = createIndicesBuffer(gl, indices, geoCoors.length / 3);
-        this._positionCount = indices.length;
+
+        const colorBuffer = createBuffer(gl, gl.ARRAY_BUFFER, colorData);
+        bindAttribute(gl, colorBuffer, 3, 4);
+        // color的loc = 3，每个实例调用一次
+        gl.vertexAttribDivisor(3, 1);
+
+        this.matrixBuffer = gl.createBuffer();
+        gl.bindBuffer(gl.ARRAY_BUFFER, this.matrixBuffer);
+        // gl.DYNAMIC_DRAW 告诉着色器这些数据经常变化，动态的，常规的用STATIC_DRAW
+        gl.bufferData(gl.ARRAY_BUFFER, this.modelMatrixData, gl.DYNAMIC_DRAW);
+
+        const matrixLoc = 4;
+        const bytesPerMatrix = 4 * 16;
+        for (let i = 0; i < 4; ++i) {
+            const loc = matrixLoc + i;
+            gl.enableVertexAttribArray(loc);
+            // note the stride and offset
+            const offset = i * 16;  // 4 floats per row, 4 bytes per float
+            gl.vertexAttribPointer(
+                loc,              // location
+                4,                // size (num values to pull from buffer per iteration)
+                gl.FLOAT,         // type of data in buffer
+                false,            // normalize
+                bytesPerMatrix,   // stride, num bytes to advance to get to next set of values
+                offset,           // offset in buffer
+            );
+            // this line says this attribute only changes for each 1 instance
+            gl.vertexAttribDivisor(loc, 1);
+        }
+
+        const indices = gl.createBuffer();
+        gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, indices);
+        gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, sphere.indices, gl.STATIC_DRAW);
+
         // 绑定结束        
         gl.bindBuffer(gl.ARRAY_BUFFER, null);
         gl.bindVertexArray(null);
+    }
+    //图层初始化
+    initialize(map, gl) {
+        // 根据数据构造program vao等
+        const vs = `#version 300 es
+           layout(location=0) in vec3 a_position;
+           layout(location=3) in vec4 a_color;
+           layout(location=4) in mat4 uPMatrix;
+           out vec4 vColor;
+           void main() {
+               gl_Position = uPMatrix * vec4(a_position,1.0);
+               vColor = a_color;
+           }`;
+        const fs = `#version 300 es
+           precision highp int;
+           precision highp float;
+           in vec4 vColor;
+           out vec4 outColor;
+           void main() {
+               outColor = vColor;
+           }`;
+        this._drawModel = createModel(gl, vs, fs);
 
+        this.setGeometry();
+        const modelOrigin = [ 118, 32 ];
+        const modelAltitude = 0;
 
-
-
-        this.vao2 = gl.createVertexArray();
-        gl.bindVertexArray(this.vao2);
-
-        const quadPositionBuffer = createBuffer(gl, gl.ARRAY_BUFFER, new Float32Array([
-            -1, 1,
-            -1, -1,
-            1, -1,
-            -1, 1,
-            1, -1,
-            1, 1,
-        ]));
-        bindAttribute(gl, quadPositionBuffer, 0, 2);
-
-        //绑定结束记得一定要设置 null，释放资源
-        gl.bindBuffer(gl.ARRAY_BUFFER, null);
-        gl.bindVertexArray(null);
-
-        // this.setLight();
+        this.modelAsMercatorCoordinate = fromLngLat(
+            modelOrigin,
+            modelAltitude
+        );
     }
     onAdd(m, gl) {
         this.map = m;
@@ -380,62 +315,59 @@ class OitTestLayer {
         this.initialize(this.map, this.gl);
     }
     render(gl, matrix) {
-        // 眼睛视点
-        const cameraPostion = this.map.getCameraPosition(true);
-        gl.bindFramebuffer(gl.FRAMEBUFFER, this.accumBuffer);
-
-        gl.useProgram(this.accumModel.program);
-        gl.clear(gl.COLOR_BUFFER_BIT);
-
+        // 2d 
+        gl.useProgram(this._drawModel.program);
         //绑定顶点vao
-        gl.bindVertexArray(this.vao1);
-        //绑定uniform
-        gl.uniformMatrix4fv(this.accumModel.uViewProj, false, matrix);
-        gl.uniform3fv(this.accumModel.uEyePosition, cameraPostion);
+        gl.bindVertexArray(this.sphereVAO);
+        // 正常情况先 平移再旋转，最后缩放
+        for (let ndx = 0; ndx < this.numInstances; ndx++) {
+            const matParams = this.spheres[ ndx ];
+            // 1 先平移到 0 0
+            const mat_1 = mat4.fromTranslation([], vec3.fromValues(matParams.translate[ 0 ], matParams.translate[ 1 ], matParams.translate[ 2 ]));
+            const mat_2 = mat4.fromScaling([], vec3.fromValues(matParams.scale[ 0 ], matParams.scale[ 1 ], matParams.scale[ 2 ]));
+            // 3 合并计算，先平移再缩放
+            const mat_3 = mat4.multiply([], mat_2, mat_1);
+
+            // 5 合并地图mvp矩阵
+            const mat_6 = mat4.multiply([], matrix, mat_3);
+            // 更新每个实例的矩阵属性
+            for (let i = 0; i < 16; i++) {
+                this.modelMatrixData[ 16 * ndx + i ] = mat_6[ i ];
+            }
+        }
+        // upload the new matrix data
+        gl.bindBuffer(gl.ARRAY_BUFFER, this.matrixBuffer);
+        gl.bufferSubData(gl.ARRAY_BUFFER, 0, this.modelMatrixData);
 
 
-        //光线方向 采用平行光
-        gl.uniform3fv(this.accumModel.uLightDirectional, [0.5, 1, 0.5]);
-        gl.blendFuncSeparate(gl.ONE, gl.ONE, gl.ZERO, gl.ONE_MINUS_SRC_ALPHA);
-        //启用gl.getExtension('OES_element_index_uint')会使用，默认是gl.UNSIGNED_BYTE和gl.UNSIGNED_SHORT
-        //When using the OES_element_index_uint extension:gl.UNSIGNED_INT
-        gl.drawElements(gl.TRIANGLES, this._positionCount, this._elementType, 0);
-        //如果取消绑定，或者绑定的vao对象不正确，就会报错GL_INVALID_OPERATION: Insufficient buffer size.
+        gl.drawArraysInstanced(
+            gl.TRIANGLES,
+            0, // 偏移
+            this.numVertices, // 每个实例的顶点数
+            this.numInstances // 实例的数量
+        )
+
+        //如果取消绑定，会报错GL_INVALID_OPERATION: Insufficient buffer size.
         gl.bindVertexArray(null);
 
-        //释放帧缓存后，等于上面的绑定也释放了，所以可以注释
-        //gl.disable(gl.BLEND);
-        gl.bindFramebuffer(gl.FRAMEBUFFER, null);
-
-        gl.useProgram(this.drawModel.program);
-        bindTexture2D(gl, this.accumTarget, 11);
-        bindTexture2D(gl, this.accumAlphaTarget, 12);
-        gl.uniform1i(this.drawModel.uAccumulate, 11);
-        gl.uniform1i(this.drawModel.uAccumulateAlpha, 12);
-
-        gl.bindVertexArray(this.vao2);
-        gl.blendFunc(gl.ONE, gl.ONE_MINUS_SRC_ALPHA);
-        gl.drawArrays(gl.TRIANGLES, 0, 6);
-        gl.bindVertexArray(null);
     }
     onRemove(map, gl) {
-        map.off('resize', this.resizeEvent);
-        gl.deleteTexture(this.accumTarget);
-        gl.deleteTexture(this.accumAlphaTarget);
-        gl.deleteFramebuffer(this.accumBuffer);
-        gl.deleteProgram(this.accumModel.program);
-        gl.deleteProgram(this.drawModel.program);
+
     }
 }
 
 
 
 export async function run(mapdiv, gui = null) {
+    // 先加载贴图
+    const png = await loadImage('./datas/khronos_webgl.png');
+    // 模拟球的测试数据
+    const sphereData = createSphere({ radius: 0.5 });
     // 初始化地图
     let baseMap = 'vector';
     const map = initMap(mapdiv, baseMap, [ 118, 32 ], 9);
     // 构造图层
-    const layer = new OitTestLayer();
+    const layer = new OitLayer(png, sphereData);
     map.on('load', function () {
         map.addLayer(layer);
     });
