@@ -33,5 +33,11 @@
   export const dem_fbo = async () => (await import('../src/examples/dem_fbo'));
   
 
-  export const oit = async () => (await import('../src/examples/oit'));
+  export const model_matrix = async () => (await import('../src/examples/model_matrix'));
+  
+
+  export const sphere = async () => (await import('../src/examples/sphere'));
+  
+
+  export const sphereInstanced = async () => (await import('../src/examples/sphereInstanced'));
   

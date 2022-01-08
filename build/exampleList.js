@@ -10,5 +10,7 @@ module.exports = [
     './examples/dem_light',
     './examples/dem_texture',
     './examples/dem_fbo',
-    './examples/oit'
+    './examples/model_matrix',
+    './examples/sphere',
+    './examples/sphereInstanced'
 ];
