@@ -104,6 +104,7 @@ dist
 .tern-port
 
 gen/
+
 zl/
 
 index.html
