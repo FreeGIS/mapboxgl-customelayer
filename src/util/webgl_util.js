@@ -87,6 +87,9 @@ export function createTexture2D(gl, textureDesc) {
     } else {
         gl.texImage2D(gl.TEXTURE_2D, textureDesc.mipLevel, textureDesc.internalFormat, textureDesc.srcFormat, textureDesc.type, textureDesc.data);
     }
+    if (textureDesc.mipLevel > 0) {
+        gl.generateMipmap(gl.TEXTURE_2D);
+    }
     return texture;
 }
 
@@ -99,19 +102,19 @@ export function bindTexture3D(gl, texture, unit) {
     gl.bindTexture(gl.TEXTURE_3D, texture);
 }
 
-export function createTextureStorage2D(gl, unit, textureDesc) {
+export function createTextureStorage2D(gl, textureDesc) {
     const texture = gl.createTexture();
-    gl.activeTexture(gl.TEXTURE0 + unit);
     gl.bindTexture(gl.TEXTURE_2D, texture);
     for (let key in textureDesc.pixelStore) {
         gl.pixelStorei(key, textureDesc.pixelStore[key]);
     }
-    gl.texStorage2D(gl.TEXTURE_2D, textureDesc.levels, textureDesc.internalFormat, textureDesc.width, textureDesc.height);
     for (let key in textureDesc.parameters) {
         gl.texParameteri(gl.TEXTURE_2D, key, textureDesc.parameters[key]);
     }
-    gl.texSubImage2D(gl.TEXTURE_2D, 0, 0, 0, textureDesc.width, textureDesc.height,
-        textureDesc.srcFormat, textureDesc.type, textureDesc.data);
+    gl.texStorage2D(gl.TEXTURE_2D, textureDesc.mipLevel, textureDesc.internalFormat, textureDesc.width, textureDesc.height);
+    // 可能错误，不一定是立刻赋值的
+    //gl.texSubImage2D(gl.TEXTURE_2D, 0, 0, 0, textureDesc.width, textureDesc.height, textureDesc.srcFormat,  textureDesc.type, textureDesc.data);
+    gl.generateMipmap(gl.TEXTURE_2D);
     return texture;
 }
 

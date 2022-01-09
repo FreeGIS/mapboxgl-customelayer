@@ -47,7 +47,7 @@ class SphereLayer {
             //let y = Math.floor(i / NUM_PER_ROW) / (NUM_PER_ROW / 4) - 0.75;
             //let z = Math.cos(angle) * RADIUS;
             let y = Math.cos(angle) * RADIUS;
-            let z = Math.floor(i / NUM_PER_ROW) * 0.75;
+            let z = Math.floor(i / NUM_PER_ROW) / (NUM_PER_ROW / 4) - 0.5;
 
             this.spheres[i] = {
                 // scale: [0.8, 0.8, 0.8],
@@ -118,6 +118,8 @@ class SphereLayer {
         gl.bindBuffer(gl.ARRAY_BUFFER, null);
         gl.bindVertexArray(null);
 
+
+
         const modelAsMercatorCoordinate = mapboxgl.MercatorCoordinate.fromLngLat(
             [118, 32], 0
         );
@@ -130,6 +132,8 @@ class SphereLayer {
             */
             scale: modelAsMercatorCoordinate.meterInMercatorCoordinateUnits()
         };
+
+
         // 为了模型能显示，要从模型坐标系转换到地图坐标系
         // 先平移10000米，将球体置于水平，避免其负数在地下不显示
         for (let i = 0; i < this.spheres.length; i++) {
@@ -143,49 +147,9 @@ class SphereLayer {
             const mat_4 = mat4.fromTranslation([], vec3.fromValues(this.modelTransform.translateX, this.modelTransform.translateY, this.modelTransform.translateZ));
             sphereinfo.modelMatrix = mat4.multiply([], mat_4, mat_3);
         }
-    }
-    onAdd(m, gl) {
-        this.map = m;
-        this.gl = gl;
-        //启用扩展，否则drawElements数组太大，会绘制混乱
-        //gl.getExtension('OES_element_index_uint');
-        //必须启用这个插件
-        if (!gl.getExtension('EXT_color_buffer_float')) {
-            console.error('FLOAT color buffer not available');
-        }
-        gl.enable(gl.BLEND);
-        gl.depthMask(false);
-        // 根据数据构造program vao等
-        const vs = `#version 300 es
-          layout(location=0) in vec3 a_position;
-          layout(location=1) in vec4 a_color;
-          layout(location=2) in vec2 a_uv;
-          layout(location=3) in mat4 uPMatrix;
-          out vec4 vColor;
-          out vec2 vUv;
-          void main() {
-              gl_Position = uPMatrix * vec4(a_position,1.0);
-              vColor = a_color;
-              vUv = a_uv;
-          }`;
-        const fs = `#version 300 es
-          precision highp int;
-          precision highp float;
-          uniform sampler2D u_texture;
-          in vec2 vUv;
-          in vec4 vColor;
-          out vec4 outColor;
-          void main() {
-               vec4 baseColor = vColor * texture(u_texture, vUv);
-               outColor = vec4(baseColor.rgb*baseColor.a,baseColor.a);
-          }`;
-        this._drawModel = createModel(gl, vs, fs);
 
-        // 设置图形
-        this.setGeometry();
         // 创建纹理
-         // 创建纹理
-         this._texture = createTexture2D(gl, {
+        this._texture = createTexture2D(gl, {
             data: this._image,
             mipLevel: 0,
             internalFormat: gl.RGBA,//webgl中格式
@@ -198,6 +162,68 @@ class SphereLayer {
                 [gl.TEXTURE_WRAP_T]: gl.CLAMP_TO_EDGE
             }
         });
+    }
+    //图层初始化
+    initialize(map, gl) {
+        // 根据数据构造program vao等
+        const vs = `#version 300 es
+           layout(location=0) in vec3 a_position;
+           layout(location=1) in vec4 a_color;
+           layout(location=2) in vec2 a_uv;
+           layout(location=3) in mat4 uPMatrix;
+           out vec4 vColor;
+           out vec2 vUv;
+           void main() {
+               gl_Position = uPMatrix * vec4(a_position,1.0);
+               vColor = a_color;
+               vUv = a_uv;
+           }`;
+        const fs = `#version 300 es
+           precision highp int;
+           precision highp float;
+           uniform sampler2D u_texture;
+           in vec2 vUv;
+           in vec4 vColor;
+           out vec4 outColor;
+           void main() {
+                vec4 baseColor = vColor * texture(u_texture, vUv);
+                outColor = vec4(baseColor.rgb*baseColor.a,baseColor.a);
+           }`;
+        this._drawModel = createModel(gl, vs, fs);
+        // 设置图形
+        this.setGeometry();
+        // 创建纹理
+        this._texture = createTexture2D(gl, {
+            data: this._image,
+            mipLevel: 0,
+            internalFormat: gl.RGBA,//webgl中格式
+            srcFormat: gl.RGBA,//输入数据源格式
+            type: gl.UNSIGNED_BYTE,
+            parameters: {
+                [gl.TEXTURE_MAG_FILTER]: gl.LINEAR,
+                [gl.TEXTURE_MIN_FILTER]: gl.LINEAR,
+                [gl.TEXTURE_WRAP_S]: gl.CLAMP_TO_EDGE,
+                [gl.TEXTURE_WRAP_T]: gl.CLAMP_TO_EDGE
+            }
+        });
+
+    }
+    onAdd(m, gl) {
+        this.map = m;
+        this.gl = gl;
+        //启用扩展，否则drawElements数组太大，会绘制混乱
+        //gl.getExtension('OES_element_index_uint');
+        //必须启用这个插件
+        if (!gl.getExtension('EXT_color_buffer_float')) {
+            console.error('FLOAT color buffer not available');
+        }
+        gl.enable(gl.BLEND);
+        gl.depthMask(false);
+        m.on('resize', this.resizeEvent.bind(this));
+        this.initialize(m, gl);
+    }
+    resizeEvent() {
+        this.initialize(this.map, this.gl);
     }
     render(gl, matrix) {
         gl.useProgram(this._drawModel.program);
