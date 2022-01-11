@@ -77,7 +77,7 @@ class SphereLayer {
 
         const colorBuffer = createBuffer(gl, gl.ARRAY_BUFFER, colorData);
         bindAttribute(gl, colorBuffer, 1, 4);
-        // color的loc = 3，每个实例调用一次
+        // color的loc = 1，每个实例调用一次
         gl.vertexAttribDivisor(1, 1);
 
         const uvBuffer = createBuffer(gl, gl.ARRAY_BUFFER, sphere.uvs);
@@ -147,14 +147,8 @@ class SphereLayer {
     onAdd(m, gl) {
         this.map = m;
         this.gl = gl;
-        //启用扩展，否则drawElements数组太大，会绘制混乱
-        //gl.getExtension('OES_element_index_uint');
-        //必须启用这个插件
-        if (!gl.getExtension('EXT_color_buffer_float')) {
-            console.error('FLOAT color buffer not available');
-        }
         gl.enable(gl.BLEND);
-        gl.depthMask(false);
+        //gl.depthMask(false);
         // 根据数据构造program vao等
         const vs = `#version 300 es
           layout(location=0) in vec3 a_position;

@@ -12,5 +12,6 @@ module.exports = [
     './examples/dem_fbo',
     './examples/model_matrix',
     './examples/sphere',
-    './examples/sphereInstanced'
+    './examples/sphereInstanced',
+    './examples/sphereInstanced_oit'
 ];
