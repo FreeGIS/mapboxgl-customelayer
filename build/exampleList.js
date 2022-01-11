@@ -13,5 +13,5 @@ module.exports = [
     './examples/model_matrix',
     './examples/sphere',
     './examples/sphereInstanced',
-    './examples/sphereInstanced_oit'
+    './examples/oit'
 ];
