@@ -68,3 +68,23 @@ npm run serve
 
 ![地形纹理](https://github.com/FreeGIS/mapboxgl-customelayer/blob/master/docs/dem_texture.png)
 
+8 偏移旋转
+
+![偏移旋转](https://github.com/FreeGIS/mapboxgl-customelayer/blob/master/docs/rotation.png)
+
+9 模型矩阵变换
+
+![模型矩阵变换](https://github.com/FreeGIS/mapboxgl-customelayer/blob/master/docs/model_matrix.png)
+
+
+10 球体
+
+![球体](https://github.com/FreeGIS/mapboxgl-customelayer/blob/master/docs/sphere.png)
+
+11 球体实例化渲染
+
+![球体实例化渲染](https://github.com/FreeGIS/mapboxgl-customelayer/blob/master/docs/sphereInstanced.png)
+
+12 球体透明OIT渲染
+
+![球体透明OIT渲染](https://github.com/FreeGIS/mapboxgl-customelayer/blob/master/docs/oit.png)
