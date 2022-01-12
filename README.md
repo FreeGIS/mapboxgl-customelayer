@@ -88,3 +88,7 @@ npm run serve
 12 球体透明OIT渲染
 
 ![球体透明OIT渲染](https://github.com/FreeGIS/mapboxgl-customelayer/blob/master/docs/oit.png)
+
+13 球体透明dual_depth_peeling渲染
+
+![球体透明dual_depth_peeling渲染](https://github.com/FreeGIS/mapboxgl-customelayer/blob/master/docs/dual_depth_peeling.png)
