@@ -13,5 +13,6 @@ module.exports = [
     './examples/model_matrix',
     './examples/sphere',
     './examples/sphereInstanced',
-    './examples/oit'
+    './examples/oit',
+    './examples/dual_depth_peeling'
 ];
