@@ -4,6 +4,7 @@ module.exports = [
     './examples/uv_texture',
     './examples/rotation',
     './examples/instanced',
+    './examples/directional_light',
     './examples/depthtest',
     './examples/geo_texture',
     './examples/dem',

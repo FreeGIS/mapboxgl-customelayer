@@ -9,5 +9,4 @@ function getNormal(point_a, point_b, point_c) {
   // const d_normal = vec3.normalize([], d);
   return normal;
 }
-
 export default getNormal;
