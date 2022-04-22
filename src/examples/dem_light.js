@@ -122,6 +122,8 @@ function dataParse(demData) {
         normal[i + 2] = d_normal[2];
     }
     console.timeEnd('normal');
+    console.log(`pos.length:${pos.length},indices.length:${indices.length},normals.length:${normal.length}`);
+    console.log(pos.length);
     return { pos, indices, color, normal };
 }
 class DemLayer {

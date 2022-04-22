@@ -4,8 +4,11 @@ module.exports = [
     './examples/uv_texture',
     './examples/rotation',
     './examples/instanced',
-    './examples/directional_light',
+   
+    './examples/directional_light_model',
+    './examples/directional_light_geo',
     './examples/depthtest',
+    './examples/depthtest_light',
     './examples/geo_texture',
     './examples/dem',
     './examples/dem_light',
@@ -15,5 +18,7 @@ module.exports = [
     './examples/sphere',
     './examples/sphereInstanced',
     './examples/oit',
-    './examples/dual_depth_peeling'
+    './examples/dual_depth_peeling',
+    './examples/dual_depth_peeling_test',
+    './examples/transformFeedback'
 ];

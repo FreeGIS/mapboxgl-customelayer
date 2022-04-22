@@ -130,11 +130,11 @@ class CustomeLayer {
         gl.drawElements(gl.TRIANGLES, this._positionCount2, this._elementType2, 0);
         // 3 锁定深度缓冲区写入操作，使其只读
         gl.depthMask(false);
-        // 4 绘制所有不透明物体 alpha<1.0
+        // 4 绘制所有透明物体 alpha<1.0 这里实际需要根据相机位置排序物体的
         gl.bindVertexArray(this._vao1);
         gl.uniform4fv(this._drawModel.u_color, new Float32Array([ 0.0, 1.0, 0, 0.3 ]));
         gl.drawElements(gl.TRIANGLES, this._positionCount1, this._elementType1, 0);
-        // 5 释放深度缓冲区，使其可独写
+        // 5 释放深度缓冲区，使其可读写
         gl.depthMask(true);
 
         //如果取消绑定，会报错GL_INVALID_OPERATION: Insufficient buffer size.

@@ -1,16 +1,238 @@
 import uuid from '../util/uuid';
-import { createModel, createBuffer, bindAttribute, createTexture2D, bindTexture2D } from '../util/webgl_util';
-import { vec3, vec4, mat4 } from 'gl-matrix';
-
+import { createModel, createBuffer, bindAttribute, bindTexture2D } from '../util/webgl_util';
+import { vec3, mat4 } from 'gl-matrix';
+import fromLngLat from '../util/fromLonLat';
 import initMap from '../util/initMap';
-import { createSphere } from '../util/sphere';
-import { loadImage } from '../util/request';
+import proj4 from 'proj4';
+import { getPositionNormal } from '../util/position_normal';
+
+function degToRad(d) {
+    return d * Math.PI / 180;
+}
+
+
+
+
+/////////////////////////
+// 测试数据
+/////////////////////////
+const positions = new Float32Array([
+    //  bottom
+    117, 32, 0,
+    117, 33, 0,
+    118, 32, 0,
+    117, 33, 0,
+    118, 33, 0,
+    118, 32, 0,
+
+    //  top
+    117, 32, 20000,
+    118, 32, 20000,
+    117, 33, 20000,
+    117, 33, 20000,
+    118, 32, 20000,
+    118, 33, 20000,
+
+    // front 地图的y轴与世界坐标系相反
+    117, 32, 0,
+    118, 32, 0,
+    118, 32, 20000,
+    117, 32, 0,
+    118, 32, 20000,
+    117, 32, 20000,
+
+    117, 32, 0,
+    117, 32, 20000,
+    117, 33, 20000,
+    117, 32, 0,
+    117, 33, 20000,
+    117, 33, 0,
+
+    118, 32, 20000,
+    118, 32, 0,
+    118, 33, 20000,
+    118, 33, 20000,
+    118, 32, 0,
+    118, 33, 0,
+
+    // back
+    117, 33, 20000,
+    118, 33, 20000,
+    117, 33, 0,
+    117, 33, 0,
+    118, 33, 20000,
+    118, 33, 0,
+
+    //  bottom
+    117.2, 32.2, 5000,
+    117.2, 32.8, 5000,
+    117.8, 32.2, 5000,
+    117.2, 32.8, 5000,
+    117.8, 32.8, 5000,
+    117.8, 32.2, 5000,
+
+    //  top
+    117.2, 32.2, 15000,
+    117.8, 32.2, 15000,
+    117.2, 32.8, 15000,
+    117.2, 32.8, 15000,
+    117.8, 32.2, 15000,
+    117.8, 32.8, 15000,
+
+    // front 地图的y轴与世界坐标系相反
+    117.2, 32.2, 5000,
+    117.8, 32.2, 5000,
+    117.8, 32.2, 15000,
+    117.2, 32.2, 5000,
+    117.8, 32.2, 15000,
+    117.2, 32.2, 15000,
+
+    117.2, 32.2, 5000,
+    117.2, 32.2, 15000,
+    117.2, 32.8, 15000,
+    117.2, 32.2, 5000,
+    117.2, 32.8, 15000,
+    117.2, 32.8, 5000,
+
+    117.8, 32.2, 15000,
+    117.8, 32.2, 5000,
+    117.8, 32.8, 15000,
+    117.8, 32.8, 15000,
+    117.8, 32.2, 5000,
+    117.8, 32.8, 5000,
+
+    // back
+    117.2, 32.8, 15000,
+    117.8, 32.8, 15000,
+    117.2, 32.8, 5000,
+    117.2, 32.8, 5000,
+    117.8, 32.8, 15000,
+    117.8, 32.8, 5000
+]);
+
+
+
+let positions_mkt = new Float32Array(positions.length);
+// 统一转墨卡托坐标 米为单位的 坐标
+let origin1 = proj4('EPSG:4326', 'EPSG:3857').forward([117, 32]);
+let origin2 = proj4('EPSG:4326', 'EPSG:3857').forward([117.2, 32.2]);
+
+for (let i = 0; i < positions.length; i = i + 3) {
+    const coormkt = fromLngLat([positions[i], positions[i + 1]], positions[i + 2]);
+    positions_mkt[i] = coormkt.x;
+    positions_mkt[i + 1] = coormkt.y;
+    positions_mkt[i + 2] = coormkt.z;
+
+    const coor3857 = proj4('EPSG:4326', 'EPSG:3857').forward([positions[i], positions[i + 1]]);
+    if (i < positions.length / 2) {
+        positions[i] = coor3857[0] - origin1[0];
+        positions[i + 1] = coor3857[1] - origin1[1];
+    } else {
+        positions[i] = coor3857[0] - origin2[0];
+        positions[i + 1] = coor3857[1] - origin2[1];
+    }
+}
+
+// 法向量用米去计算
+const normals = getPositionNormal(positions);
+
+const colors = new Float32Array([
+    //  bottom
+    0.0, 1.0, 0, 0.3,
+    0.0, 1.0, 0, 0.3,
+    0.0, 1.0, 0, 0.3,
+    0.0, 1.0, 0, 0.3,
+    0.0, 1.0, 0, 0.3,
+    0.0, 1.0, 0, 0.3,
+
+    //  top
+    0.0, 1.0, 0, 0.3,
+    0.0, 1.0, 0, 0.3,
+    0.0, 1.0, 0, 0.3,
+    0.0, 1.0, 0, 0.3,
+    0.0, 1.0, 0, 0.3,
+    0.0, 1.0, 0, 0.3,
+
+    // front 地图的y轴与世界坐标系相反
+    0.0, 1.0, 0, 0.3,
+    0.0, 1.0, 0, 0.3,
+    0.0, 1.0, 0, 0.3,
+    0.0, 1.0, 0, 0.3,
+    0.0, 1.0, 0, 0.3,
+    0.0, 1.0, 0, 0.3,
+
+    0.0, 1.0, 0, 0.3,
+    0.0, 1.0, 0, 0.3,
+    0.0, 1.0, 0, 0.3,
+    0.0, 1.0, 0, 0.3,
+    0.0, 1.0, 0, 0.3,
+    0.0, 1.0, 0, 0.3,
+
+    0.0, 1.0, 0, 0.3,
+    0.0, 1.0, 0, 0.3,
+    0.0, 1.0, 0, 0.3,
+    0.0, 1.0, 0, 0.3,
+    0.0, 1.0, 0, 0.3,
+    0.0, 1.0, 0, 0.3,
+
+    // back
+    0.0, 1.0, 0, 0.3,
+    0.0, 1.0, 0, 0.3,
+    0.0, 1.0, 0, 0.3,
+    0.0, 1.0, 0, 0.3,
+    0.0, 1.0, 0, 0.3,
+    0.0, 1.0, 0, 0.3,
+
+    //  bottom
+    1.0, 0, 0, 1.0,
+    1.0, 0, 0, 1.0,
+    1.0, 0, 0, 1.0,
+    1.0, 0, 0, 1.0,
+    1.0, 0, 0, 1.0,
+    1.0, 0, 0, 1.0,
+
+    //  top
+    1.0, 0, 0, 1.0,
+    1.0, 0, 0, 1.0,
+    1.0, 0, 0, 1.0,
+    1.0, 0, 0, 1.0,
+    1.0, 0, 0, 1.0,
+    1.0, 0, 0, 1.0,
+
+    // front 地图的y轴与世界坐标系相反
+    1.0, 0, 0, 1.0,
+    1.0, 0, 0, 1.0,
+    1.0, 0, 0, 1.0,
+    1.0, 0, 0, 1.0,
+    1.0, 0, 0, 1.0,
+    1.0, 0, 0, 1.0,
+
+    1.0, 0, 0, 1.0,
+    1.0, 0, 0, 1.0,
+    1.0, 0, 0, 1.0,
+    1.0, 0, 0, 1.0,
+    1.0, 0, 0, 1.0,
+    1.0, 0, 0, 1.0,
+
+    1.0, 0, 0, 1.0,
+    1.0, 0, 0, 1.0,
+    1.0, 0, 0, 1.0,
+    1.0, 0, 0, 1.0,
+    1.0, 0, 0, 1.0,
+    1.0, 0, 0, 1.0,
+
+    // back
+    1.0, 0, 0, 1.0,
+    1.0, 0, 0, 1.0,
+    1.0, 0, 0, 1.0,
+    1.0, 0, 0, 1.0,
+    1.0, 0, 0, 1.0,
+    1.0, 0, 0, 1.0
+]);
 
 class SphereLayer {
-    constructor(image, sphere) {
+    constructor() {
         this._id = uuid();
-        this._image = image;
-        this._sphere = sphere;
     }
     // 只读属性
     get id() {
@@ -26,155 +248,16 @@ class SphereLayer {
     // 设置图形
     setGeometry() {
         const gl = this.gl;
-
-        // 测试32个球
-        let NUM_SPHERES = 32;
-        this.numInstances = NUM_SPHERES;
-        // 每行8个球
-        let NUM_PER_ROW = 8;
-
-        // 球半径设置0.06
-        let RADIUS = 0.8;
-        let meterScale = 20000;
-        this.spheres = new Array(NUM_SPHERES);
-        let colorData = new Float32Array(NUM_SPHERES * 4);
-        this.modelMatrixData = new Float32Array(NUM_SPHERES * 16);
-        this.modelInverseTransposeMatrixData = new Float32Array(NUM_SPHERES * 16);
-
-
-        const scale = [0.8, 0.8, 0.8];
-        for (let i = 0; i < NUM_SPHERES; ++i) {
-            let angle = 2 * Math.PI * (i % NUM_PER_ROW) / NUM_PER_ROW;
-            let x = Math.sin(angle) * RADIUS;
-            //let y = Math.floor(i / NUM_PER_ROW) / (NUM_PER_ROW / 4) - 0.75;
-            //let z = Math.cos(angle) * RADIUS;
-            let y = Math.cos(angle) * RADIUS;
-            let z = Math.floor(i / NUM_PER_ROW) * 0.75;
-
-            this.spheres[i] = {
-                // scale: [0.8, 0.8, 0.8],
-                //rotate: [0, 0, 0], // Will be used for global rotation
-                translate: [x * meterScale, y * meterScale, z * meterScale],
-                //modelMatrix: mat4.create()
-            };
-
-            colorData.set(vec4.fromValues(
-                Math.sqrt(Math.random()),
-                Math.sqrt(Math.random()),
-                Math.sqrt(Math.random()),
-                0.5
-            ), i * 4);
-        }
-
-
-        // 每个球的顶点数量
-        let sphere = this._sphere;
-        this.numVertices = sphere.positions.length / 3;
-
+        //GL_INVALID_OPERATION: Insufficient buffer size. 通常没new Float32Array
         this.sphereVAO = gl.createVertexArray();
         gl.bindVertexArray(this.sphereVAO);
-
-
-        const positionBuffer = createBuffer(gl, gl.ARRAY_BUFFER, sphere.positions);
+        const positionBuffer = createBuffer(gl, gl.ARRAY_BUFFER, positions_mkt);
         bindAttribute(gl, positionBuffer, 0, 3);
+        const normalBuffer = createBuffer(gl, gl.ARRAY_BUFFER, new Float32Array(normals));
+        bindAttribute(gl, normalBuffer, 1, 3);
 
-        const uvBuffer = createBuffer(gl, gl.ARRAY_BUFFER, sphere.uvs);
-        bindAttribute(gl, uvBuffer, 1, 2);
-
-        const normalBuffer = createBuffer(gl, gl.ARRAY_BUFFER, sphere.normals);
-        bindAttribute(gl, normalBuffer, 2, 3);
-
-        const colorBuffer = createBuffer(gl, gl.ARRAY_BUFFER, colorData);
-        bindAttribute(gl, colorBuffer, 3, 4);
-        // color的loc = 3，每个实例调用一次
-        gl.vertexAttribDivisor(3, 1);
-
-
-        const modelAsMercatorCoordinate = mapboxgl.MercatorCoordinate.fromLngLat(
-            [118, 32], 0
-        );
-        this.modelTransform = {
-            translateX: modelAsMercatorCoordinate.x,
-            translateY: modelAsMercatorCoordinate.y,
-            translateZ: modelAsMercatorCoordinate.z,
-            /* Since the 3D model is in real world meters, a scale transform needs to be
-            * applied since the CustomLayerInterface expects units in MercatorCoordinates.
-            */
-            scale: modelAsMercatorCoordinate.meterInMercatorCoordinateUnits()
-        };
-        // 为了模型能显示，要从模型坐标系转换到地图坐标系
-        // 先平移10000米，将球体置于水平，避免其负数在地下不显示
-        for (let i = 0; i < this.spheres.length; i++) {
-            const sphereinfo = this.spheres[i];
-            const mat_1 = mat4.fromTranslation([], vec3.fromValues(sphereinfo.translate[0], sphereinfo.translate[1], sphereinfo.translate[2] + 10000));
-            // 再根据地图比例尺缩放下
-            const mat_2 = mat4.fromScaling([], vec3.fromValues(this.modelTransform.scale * scale[0], -this.modelTransform.scale * scale[1], this.modelTransform.scale * scale[2]));
-            // 矩阵乘法先变换的矩阵  放右边，后变换的矩阵放左边。
-            // 本例子要求先平移（mat_1)，再缩放(mat_2);
-            const mat_3 = mat4.multiply([], mat_2, mat_1);
-            const mat_4 = mat4.fromTranslation([], vec3.fromValues(this.modelTransform.translateX, this.modelTransform.translateY, this.modelTransform.translateZ));
-            sphereinfo.modelMatrix = mat4.multiply([], mat_4, mat_3);
-
-            // 为了让模型在缩放后能保持正确法向量，需要求逆转置
-            const mat_5 = mat4.invert([], sphereinfo.modelMatrix);
-            const worldInverseTranspose = mat4.transpose([], mat_5);
-
-            // 更新每个实例的矩阵属性
-            for (let j = 0; j < 16; j++) {
-                this.modelInverseTransposeMatrixData[16 * i + j] = worldInverseTranspose[j];
-                this.modelMatrixData[16 * i + j] = sphereinfo.modelMatrix[j];
-            }
-        }
-
-
-        const matrixBuffer = createBuffer(gl, gl.ARRAY_BUFFER, this.modelMatrixData);
-
-        const matrixLoc = 4;
-        const bytesPerMatrix = 4 * 16;
-        for (let i = 0; i < 4; ++i) {
-            const loc = matrixLoc + i;
-            gl.enableVertexAttribArray(loc);
-            // note the stride and offset
-            const offset = i * 16;  // 4 floats per row, 4 bytes per float
-            gl.vertexAttribPointer(
-                loc,              // location
-                4,                // size (num values to pull from buffer per iteration)
-                gl.FLOAT,         // type of data in buffer
-                false,            // normalize
-                bytesPerMatrix,   // stride, num bytes to advance to get to next set of values
-                offset,           // offset in buffer
-            );
-            // this line says this attribute only changes for each 1 instance
-            gl.vertexAttribDivisor(loc, 1);
-        }
-
-
-
-        const modelInverseTransposeMatrixDataBuffer = createBuffer(gl, gl.ARRAY_BUFFER, this.modelInverseTransposeMatrixData);
-        const matrixLoc1 = 8;
-        const bytesPerMatrix1 = 4 * 16;
-        for (let i = 0; i < 4; ++i) {
-            const loc = matrixLoc1 + i;
-            gl.enableVertexAttribArray(loc);
-            // note the stride and offset
-            const offset = i * 16;  // 4 floats per row, 4 bytes per float
-            gl.vertexAttribPointer(
-                loc,              // location
-                4,                // size (num values to pull from buffer per iteration)
-                gl.FLOAT,         // type of data in buffer
-                false,            // normalize
-                bytesPerMatrix1,   // stride, num bytes to advance to get to next set of values
-                offset,           // offset in buffer
-            );
-            // this line says this attribute only changes for each 1 instance
-            gl.vertexAttribDivisor(loc, 1);
-        }
-
-
-        const indices = gl.createBuffer();
-        gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, indices);
-        gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, sphere.indices, gl.STATIC_DRAW);
-        this._positionCount = sphere.indices.length;
+        const colorBuffer = createBuffer(gl, gl.ARRAY_BUFFER, new Float32Array(colors));
+        bindAttribute(gl, colorBuffer, 2, 4);
 
 
 
@@ -191,11 +274,14 @@ class SphereLayer {
             1, 1,
         ]));
         bindAttribute(gl, quadPositionBuffer, 0, 2);
-        //gl.enableVertexAttribArray(0);
 
         // 绑定结束        
         gl.bindBuffer(gl.ARRAY_BUFFER, null);
         gl.bindVertexArray(null);
+
+        // 平行光  入射方向
+        gl.useProgram(this._depthPeelModel.program);
+        gl.uniform3fv(this._depthPeelModel.u_reverseLightDirection, [0.5, 0.7, 1]);
     }
     // 创建model
     createModel() {
@@ -203,29 +289,19 @@ class SphereLayer {
         // 根据数据构造program vao等
         const peeling_vs = `#version 300 es
             layout(location=0) in vec3 position;
-            layout(location=1) in vec2 uv;
-            layout(location=2) in vec3 normal;
-            layout(location=3) in vec4 color;
-            // 模型平移缩放旋转后的矩阵
-            layout(location=4) in mat4 modelMatrix;
-            // 上一个矩阵实际占用location 4-5-6-7 几个loc，下一个必须从8开始
-            layout(location=8) in mat4 modelInverseTransposeMatrix;
-
+            layout(location=1) in vec3 normal;
+            layout(location=2) in vec4 a_color;
             uniform mat4 uViewProj;
-
+            uniform mat4 u_worldInverseTranspose;
             out vec3 vPosition;
-            out vec2 vUV;
             out vec3 vNormal;
-            flat out vec4 vColor;
-
+            out vec4 vColor;
+          
             void main() {
-                vec4 world_position = modelMatrix * vec4(position,1.0);
-                gl_Position = uViewProj * world_position;
-                vPosition = world_position.xyz;
-                vUV = uv;
-                // 因为法向量是方向所以不用关心位移， 矩阵的左上 3x3 部分才是控制姿态的
-                vNormal = mat3(modelInverseTransposeMatrix) * normal;
-                vColor = color;
+                gl_Position = uViewProj * vec4(position,1.0);
+                vNormal = mat3(u_worldInverseTranspose) * normal;
+                vPosition = position;
+                vColor = a_color;
             }`;
         const peeling_fs = `#version 300 es
             precision highp int;
@@ -238,15 +314,19 @@ class SphereLayer {
             uniform sampler2D uDepth;
             uniform sampler2D uFrontColor;
 
-            // 视点位置
+            // 视点位置 mkt 0-1 坐标
             uniform vec3 uEyePosition;
             // 光线位置
-            uniform vec3 uLightPosition;
+            //uniform vec3 uLightPosition;
+            // 世界坐标系 入射方向
+            uniform vec3 u_reverseLightDirection;
+
             
+            // 视点位置 mkt 0-1 坐标
             in vec3 vPosition;
-            in vec2 vUV;
             in vec3 vNormal;
-            flat in vec4 vColor;
+            in vec4 vColor;
+
 
             layout(location=0) out vec2 depth;  // RG32F, R - negative front depth, G - back depth
             layout(location=1) out vec4 frontColor;
@@ -299,19 +379,19 @@ class SphereLayer {
 
                 vec3 position = vPosition;
                 vec3 normal = normalize(vNormal);
-                vec2 uv = vUV;
+               
 
-                vec4 baseColor = vColor * texture(uTexture, uv);
-                // 物体到视点位置，即视线方向
+                vec4 baseColor = vColor;
+                // 物体到视点位置，即视线方向 mkt0-1坐标算的
                 vec3 eyeDirection = normalize(uEyePosition - position);
-                // 物体到光线位置，即光线方向
-                vec3 lightVec = uLightPosition - position;
-                vec3 lightDirection = normalize(lightVec);
+                // 物体到光线位置，即光线方向 uLightPosition不是mkt 0-1坐标系
+                //vec3 lightVec = uLightPosition - position;
+                //vec3 lightDirection = normalize(lightVec);
                 // -lightDirection 是光线方向反方向，即 光线入射方向
                 // 反射光线方向 入射方向与平面法向量的反射=反射光线
-                vec3 reflectionDirection = reflect(-lightDirection, normal);
+                vec3 reflectionDirection = reflect(u_reverseLightDirection, normal);
                 //光照系数 入射角=dot(光线方向,法线方向)
-                float nDotL = max(dot(lightDirection, normal), 0.0);
+                float nDotL = max(dot(-u_reverseLightDirection, normal), 0.0);
                 // 漫反射
                 float diffuse = nDotL;
                 // 环境光
@@ -319,7 +399,7 @@ class SphereLayer {
                 //光照强度 视线方向与反射方向的夹角
                 float specular = pow(max(dot(reflectionDirection, eyeDirection), 0.0), 20.0);
 
-                vec4 color = vec4((ambient + diffuse + specular) * baseColor.rgb, vColor.a);
+                vec4 color = vec4((ambient + diffuse + specular) * baseColor.rgb, baseColor.a);
                
                 // dual depth peeling
                 // write to back and front color buffer
@@ -390,7 +470,7 @@ class SphereLayer {
         this.fbo_textures = [];
         for (let i = 0; i < 2; i++) {
             gl.bindFramebuffer(gl.FRAMEBUFFER, this.depthPeelBuffers[i]);
-     
+
             let depthTarget = gl.createTexture();
             gl.bindTexture(gl.TEXTURE_2D, depthTarget);
             gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
@@ -437,32 +517,11 @@ class SphereLayer {
         gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, this.blendBackTarget, 0);
         gl.bindFramebuffer(gl.FRAMEBUFFER, null);
 
-
-        this.eyePosition = vec3.fromValues(0, 0.8, 2);
         this.lightPosition = vec3.fromValues(1, 1, 2);
-
-
         this.DEPTH_CLEAR_VALUE = -99999.0;
         this.MAX_DEPTH = 1.0;
         this.MIN_DEPTH = 0.0;
         this.NUM_PASS = 4;   // maximum rendered layer number = NUM_PASS * 2
-
-
-        // 创建贴图纹理
-        this._texture = createTexture2D(gl, {
-            data: this._image,
-            mipLevel: 0,
-            internalFormat: gl.RGBA,//webgl中格式
-            srcFormat: gl.RGBA,//输入数据源格式
-            type: gl.UNSIGNED_BYTE,
-            parameters: {
-                [gl.TEXTURE_MAG_FILTER]: gl.LINEAR,
-                [gl.TEXTURE_MIN_FILTER]: gl.LINEAR,
-                [gl.TEXTURE_WRAP_S]: gl.CLAMP_TO_EDGE,
-                [gl.TEXTURE_WRAP_T]: gl.CLAMP_TO_EDGE
-            }
-        });
-
     }
     //图层初始化
     initialize() {
@@ -489,6 +548,20 @@ class SphereLayer {
     }
 
     render(gl, matrix) {
+
+        const transform = this.map.transform;
+        const pitch = degToRad(this.map.getPitch());
+        //地图旋转后，修改法向量参数
+        let worldMatrix = mat4.fromXRotation([], -1 * pitch);
+        mat4.rotateZ(worldMatrix, worldMatrix, -1 * transform.angle);
+
+        // worldMatrix = mat4.multiply([],worldMatrix,this.modelMatrix);
+        const worldInverseMatrix = mat4.invert([], worldMatrix);
+        const worldInverseTransposeMatrix = mat4.transpose([], worldInverseMatrix);
+
+
+
+
         //////////////////////////////////
         // 1. Initialize min-max depth buffer
         //////////////////////////////////
@@ -528,19 +601,22 @@ class SphereLayer {
         gl.uniform1i(this._depthPeelModel.uDepth, 13);
         bindTexture2D(gl, this.fbo_textures[4], 14);
         gl.uniform1i(this._depthPeelModel.uFrontColor, 14);
-        bindTexture2D(gl, this._texture, 10);
-        gl.uniform1i(this._depthPeelModel.uTexture, 10);
-        gl.uniform3fv(this._depthPeelModel.uLightPosition, new Float32Array(this.lightPosition));
 
-         // 当前相机位置，mkt 0-1 坐标系。
-         const cameraPosition = this.map.getFreeCameraOptions().position;
+        //gl.uniform3fv(this._depthPeelModel.uLightPosition, new Float32Array(this.lightPosition));
+
+        // 当前相机位置，mkt 0-1 坐标系。
+        const cameraPosition = this.map.getFreeCameraOptions().position;
+        //console.log('camera',cameraPosition);
+        gl.uniform3fv(this._depthPeelModel.uEyePosition, new Float32Array([cameraPosition.x, cameraPosition.y, cameraPosition.z]));
+        gl.uniform3fv(this._depthPeelModel.uLightPosition, [1, 0, 0]);
 
 
-        gl.uniform3fv(this._depthPeelModel.uEyePosition, new Float32Array([cameraPosition.x,cameraPosition.y,cameraPosition.z]));
         gl.uniformMatrix4fv(this._depthPeelModel.uViewProj, false, matrix);
-        // 根据索引绘制实例
-        gl.drawElementsInstanced(gl.TRIANGLES, this._positionCount, gl.UNSIGNED_SHORT, 0, this.numInstances);
 
+        gl.uniformMatrix4fv(this._depthPeelModel.u_worldInverseTranspose, false, worldInverseTransposeMatrix);
+        // 根据索引绘制
+        //gl.drawElements(gl.TRIANGLES, this._positionCount, gl.UNSIGNED_BYTE, 0);
+        gl.drawArrays(gl.TRIANGLES, 0, positions_mkt.length / 3);
         ////////////////////////////////////
         // 2. Dual Depth Peeling Ping-Pong
         ////////////////////////////////////
@@ -577,8 +653,8 @@ class SphereLayer {
 
             // draw geometry
             gl.bindVertexArray(this.sphereVAO);
-            gl.drawElementsInstanced(gl.TRIANGLES, this._positionCount, gl.UNSIGNED_SHORT, 0, this.numInstances);
-
+            //gl.drawElements(gl.TRIANGLES, this._positionCount, gl.UNSIGNED_BYTE, 0);
+            gl.drawArrays(gl.TRIANGLES, 0, positions_mkt.length / 3);
             // blend back color separately
             offsetBack = writeId * 3;
             gl.bindFramebuffer(gl.DRAW_FRAMEBUFFER, this.blendBackBuffer);
@@ -597,11 +673,11 @@ class SphereLayer {
         gl.bindFramebuffer(gl.FRAMEBUFFER, null);
 
 
-        
+
         gl.blendFunc(gl.ONE, gl.ONE_MINUS_SRC_ALPHA);
         gl.useProgram(this._finalModel.program);
 
-        
+
         bindTexture2D(gl, this.blendBackTarget, 16);
         gl.uniform1i(this._finalModel.uBackColor, 16);
 
@@ -621,15 +697,12 @@ class SphereLayer {
 
 
 export async function run(mapdiv, gui = null) {
-    // 先加载贴图
-    const png = await loadImage('./datas/khronos_webgl.png');
-    // 模拟球的测试数据，单位是 米 
-    const sphereData = createSphere({ radius: 10000 });
+
     // 初始化地图
     let baseMap = 'vector';
     const map = initMap(mapdiv, baseMap, [118, 32], 9);
     // 构造图层
-    const layer = new SphereLayer(png, sphereData);
+    const layer = new SphereLayer();
     map.on('load', function () {
         map.addLayer(layer);
     });

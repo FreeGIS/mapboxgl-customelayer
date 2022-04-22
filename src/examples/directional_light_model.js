@@ -1,11 +1,8 @@
 import initMap from '../util/initMap';
 import uuid from '../util/uuid';
 import { createModel, createBuffer, bindAttribute } from '../util/webgl_util';
-import { vec3, mat4 } from 'gl-matrix';
+import { vec3, vec4, mat4 } from 'gl-matrix';
 import { getPositionNormal } from '../util/position_normal';
-function radToDeg(r) {
-    return r * 180 / Math.PI;
-}
 
 function degToRad(d) {
     return d * Math.PI / 180;
@@ -14,7 +11,8 @@ function degToRad(d) {
 // 测试数据
 /////////////////////////
 //单位为米的一F，要平移到地图点[118,32]位置处显示
-const positions = new Float32Array([
+// 坐标统一以逆时针顺序，否则法向量计算会乱
+var positions = new Float32Array([
     // left column front
     0, 0, 0,
     0, 150, 0,
@@ -144,9 +142,18 @@ const positions = new Float32Array([
     0, 150, 0,
 ]);
 
+var matrix = mat4.fromXRotation([], Math.PI);
+//const mat_2 = mat4.fromTranslation([], vec3.fromValues(-50, -75, -15));
+//matrix = mat4.multiply([], mat_2, matrix);
 
+
+for (var ii = 0; ii < positions.length; ii += 3) {
+    var vector = vec4.transformMat4([], vec4.fromValues(positions[ii + 0], positions[ii + 1], positions[ii + 2], 1), matrix);
+    positions[ii + 0] = vector[0];
+    positions[ii + 1] = vector[1];
+    positions[ii + 2] = vector[2];
+}
 const normals = getPositionNormal(positions);
-console.log(normals);
 class CustomeLayer {
     constructor() {
         this._id = uuid();
@@ -175,6 +182,7 @@ class CustomeLayer {
         void main() {
           gl_Position = uPMatrix * vec4(a_position,1.0);
           v_normal = mat3(u_worldInverseTranspose) * a_normal;
+          //v_normal = a_normal;
         }`;
         const fs = `#version 300 es
         precision highp float;
@@ -223,9 +231,10 @@ class CustomeLayer {
             scale: modelAsMercatorCoordinate.meterInMercatorCoordinateUnits()
         };
 
-        // 先根据地图比例尺缩放下
-        const mat_1 = mat4.fromScaling([], vec3.fromValues(this.modelTransform.scale, -this.modelTransform.scale, this.modelTransform.scale));
 
+        // 先根据地图比例尺缩放下
+        const mat_1 = mat4.fromScaling([], vec3.fromValues(this.modelTransform.scale, -1.0 * this.modelTransform.scale, this.modelTransform.scale));
+        this._scaleMatrix = mat_1;
         // 为简化写法，也可以使用如下语句
         /*
             const mat_1 = mat4.fromScaling([], vec3.fromValues(this.modelTransform.scale, -this.modelTransform.scale, this.modelTransform.scale));
@@ -255,10 +264,15 @@ class CustomeLayer {
         let worldMatrix = mat4.fromXRotation([], -1 * pitch);
         mat4.rotateZ(worldMatrix, worldMatrix, -1 * transform.angle);
 
-        // worldMatrix = mat4.multiply([],worldMatrix,this.modelMatrix);
         const worldInverseMatrix = mat4.invert([], worldMatrix);
+        //const worldInverseTransposeMatrix = mat4.transpose([], worldMatrix);
         const worldInverseTransposeMatrix = mat4.transpose([], worldInverseMatrix);
         gl.uniformMatrix4fv(this._drawModel.u_worldInverseTranspose, false, worldInverseTransposeMatrix);
+
+        //const cameraPosition = this._map.getFreeCameraOptions().position;
+        //gl.uniform3fv(this._drawModel.u_reverseLightDirection, [cameraPosition.x, -1*cameraPosition.y, cameraPosition.z]);
+
+
 
         //绑定顶点vao
         gl.bindVertexArray(this._vao);

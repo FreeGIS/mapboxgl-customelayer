@@ -69,7 +69,12 @@ export function createModel(gl, vertexSource, fragmentSource, transformFeedbackV
     }
     return wrapper;
 }
-
+export function makeTransformFeedback(gl, buffer) {
+    const tf = gl.createTransformFeedback();
+    gl.bindTransformFeedback(gl.TRANSFORM_FEEDBACK, tf);
+    gl.bindBufferBase(gl.TRANSFORM_FEEDBACK_BUFFER, 0, buffer);
+    return tf;
+}
 
 export function createTexture2D(gl, textureDesc) {
     const texture = gl.createTexture();
@@ -165,10 +170,10 @@ export function createIndicesBuffer(gl, indices, posCount) {
     }
 }
 
-export function bindAttribute(gl, buffer, attributeLoc, numComponents) {
+export function bindAttribute(gl, buffer, attributeLoc, numComponents, offset = 0) {
     gl.bindBuffer(gl.ARRAY_BUFFER, buffer);
     gl.enableVertexAttribArray(attributeLoc);
-    gl.vertexAttribPointer(attributeLoc, numComponents, gl.FLOAT, false, 0, 0);
+    gl.vertexAttribPointer(attributeLoc, numComponents, gl.FLOAT, false, offset, 0);
 }
 
 
