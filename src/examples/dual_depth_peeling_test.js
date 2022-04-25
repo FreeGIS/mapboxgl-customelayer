@@ -3,9 +3,8 @@ import { createModel, createBuffer, bindAttribute, bindTexture2D } from '../util
 import { vec3, mat4 } from 'gl-matrix';
 import fromLngLat from '../util/fromLonLat';
 import initMap from '../util/initMap';
-import proj4 from 'proj4';
 import { getPositionNormal } from '../util/position_normal';
-
+import proj4 from 'proj4';
 function degToRad(d) {
     return d * Math.PI / 180;
 }
@@ -112,29 +111,24 @@ const positions = new Float32Array([
 
 
 
-let positions_mkt = new Float32Array(positions.length);
 // 统一转墨卡托坐标 米为单位的 坐标
-let origin1 = proj4('EPSG:4326', 'EPSG:3857').forward([117, 32]);
-let origin2 = proj4('EPSG:4326', 'EPSG:3857').forward([117.2, 32.2]);
-
+let positions_mkt = new Float32Array(positions.length);
+let position_mapbox_mkt = new Float32Array(positions.length);
 for (let i = 0; i < positions.length; i = i + 3) {
-    const coormkt = fromLngLat([positions[i], positions[i + 1]], positions[i + 2]);
-    positions_mkt[i] = coormkt.x;
-    positions_mkt[i + 1] = coormkt.y;
-    positions_mkt[i + 2] = coormkt.z;
-
+    const coor_mkt = fromLngLat([positions[i], positions[i + 1]], positions[i + 2]);
+    position_mapbox_mkt[i] = coor_mkt.x;
+    position_mapbox_mkt[i + 1] = coor_mkt.y;
+    position_mapbox_mkt[i + 2] = coor_mkt.z;
+    // 转经纬度
     const coor3857 = proj4('EPSG:4326', 'EPSG:3857').forward([positions[i], positions[i + 1]]);
-    if (i < positions.length / 2) {
-        positions[i] = coor3857[0] - origin1[0];
-        positions[i + 1] = coor3857[1] - origin1[1];
-    } else {
-        positions[i] = coor3857[0] - origin2[0];
-        positions[i + 1] = coor3857[1] - origin2[1];
-    }
+    positions_mkt[i] = coor3857[0];
+    positions_mkt[i + 1] = coor3857[1];
+    positions_mkt[i + 2] = positions[i + 2];
 }
 
-// 法向量用米去计算
-const normals = getPositionNormal(positions);
+// 法向量用 墨卡托米为单位去计算，该坐标系下xyz轴与世界坐标系轴相同。
+// 如果用mapbox的mkt坐标算，因为其y轴进行了-1转换，导致position原来是顺时针的三角形逆时针了，方向反了，法向量也就错了。
+const normals = getPositionNormal(positions_mkt);
 
 const colors = new Float32Array([
     //  bottom
@@ -251,7 +245,7 @@ class SphereLayer {
         //GL_INVALID_OPERATION: Insufficient buffer size. 通常没new Float32Array
         this.sphereVAO = gl.createVertexArray();
         gl.bindVertexArray(this.sphereVAO);
-        const positionBuffer = createBuffer(gl, gl.ARRAY_BUFFER, positions_mkt);
+        const positionBuffer = createBuffer(gl, gl.ARRAY_BUFFER, position_mapbox_mkt);
         bindAttribute(gl, positionBuffer, 0, 3);
         const normalBuffer = createBuffer(gl, gl.ARRAY_BUFFER, new Float32Array(normals));
         bindAttribute(gl, normalBuffer, 1, 3);
@@ -300,7 +294,7 @@ class SphereLayer {
             void main() {
                 gl_Position = uViewProj * vec4(position,1.0);
                 vNormal = mat3(u_worldInverseTranspose) * normal;
-                vPosition = position;
+                vPosition = mat3(u_worldInverseTranspose) * position;
                 vColor = a_color;
             }`;
         const peeling_fs = `#version 300 es
@@ -314,7 +308,9 @@ class SphereLayer {
             uniform sampler2D uDepth;
             uniform sampler2D uFrontColor;
 
-            // 视点位置 mkt 0-1 坐标
+
+            //uniform mat4 u_worldInverseTranspose;
+            // 视点 光线点都是 xyz 世界坐标系位置
             uniform vec3 uEyePosition;
             // 光线位置
             //uniform vec3 uLightPosition;
@@ -382,6 +378,7 @@ class SphereLayer {
                
 
                 vec4 baseColor = vColor;
+                /*
                 // 物体到视点位置，即视线方向 mkt0-1坐标算的
                 vec3 eyeDirection = normalize(uEyePosition - position);
                 // 物体到光线位置，即光线方向 uLightPosition不是mkt 0-1坐标系
@@ -391,16 +388,20 @@ class SphereLayer {
                 // 反射光线方向 入射方向与平面法向量的反射=反射光线
                 vec3 reflectionDirection = reflect(u_reverseLightDirection, normal);
                 //光照系数 入射角=dot(光线方向,法线方向)
-                float nDotL = max(dot(-u_reverseLightDirection, normal), 0.0);
+                float nDotL = max(dot(-u_reverseLightDirection, normal), 0.0);*/
+                
+                float light = dot(normal, u_reverseLightDirection);
+
                 // 漫反射
-                float diffuse = nDotL;
+                //float diffuse = nDotL;
                 // 环境光
                 float ambient = 0.2;
                 //光照强度 视线方向与反射方向的夹角
-                float specular = pow(max(dot(reflectionDirection, eyeDirection), 0.0), 20.0);
+                //float specular = pow(max(dot(reflectionDirection, eyeDirection), 0.0), 20.0);
 
-                vec4 color = vec4((ambient + diffuse + specular) * baseColor.rgb, baseColor.a);
-               
+                //vec4 color = vec4((ambient + diffuse + specular) * baseColor.rgb, baseColor.a);
+                vec4 color = vec4((ambient + light) * baseColor.rgb, baseColor.a);
+
                 // dual depth peeling
                 // write to back and front color buffer
 
@@ -548,19 +549,13 @@ class SphereLayer {
     }
 
     render(gl, matrix) {
-
         const transform = this.map.transform;
         const pitch = degToRad(this.map.getPitch());
         //地图旋转后，修改法向量参数
         let worldMatrix = mat4.fromXRotation([], -1 * pitch);
         mat4.rotateZ(worldMatrix, worldMatrix, -1 * transform.angle);
-
-        // worldMatrix = mat4.multiply([],worldMatrix,this.modelMatrix);
         const worldInverseMatrix = mat4.invert([], worldMatrix);
         const worldInverseTransposeMatrix = mat4.transpose([], worldInverseMatrix);
-
-
-
 
         //////////////////////////////////
         // 1. Initialize min-max depth buffer
@@ -606,10 +601,9 @@ class SphereLayer {
 
         // 当前相机位置，mkt 0-1 坐标系。
         const cameraPosition = this.map.getFreeCameraOptions().position;
-        //console.log('camera',cameraPosition);
-        gl.uniform3fv(this._depthPeelModel.uEyePosition, new Float32Array([cameraPosition.x, cameraPosition.y, cameraPosition.z]));
-        gl.uniform3fv(this._depthPeelModel.uLightPosition, [1, 0, 0]);
-
+        gl.uniform3fv(this._depthPeelModel.uEyePosition, [cameraPosition.x, cameraPosition.y, cameraPosition.z]);
+        //gl.uniform3fv(this._depthPeelModel.uLightPosition, [1, 0, 0]);
+        //mat3(u_worldInverseTranspose) * position;
 
         gl.uniformMatrix4fv(this._depthPeelModel.uViewProj, false, matrix);
 

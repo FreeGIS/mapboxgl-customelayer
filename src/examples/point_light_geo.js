@@ -1,3 +1,4 @@
+// 点光源 显示仍然有问题
 import initMap from '../util/initMap';
 import uuid from '../util/uuid';
 import { createModel, createBuffer, bindAttribute } from '../util/webgl_util';
@@ -108,16 +109,7 @@ const colors = new Float32Array([
     1, 0, 0, 1,
     1, 0, 0, 1
 ]);
-/*
-MapboxGL地图开发中，世界坐标系即：mkt0-1坐标。
-customeLayer里的matrix是 view+projection 变换
 
-通常开发时，地理三角面都是以经纬度+高度组织的，并根据里面和外面，三角面顺时针和逆时针方向组织。
-但在通过fromLngLat将三角面转换到0-1墨卡托(世界坐标系)的时候，
-y轴scale -1了，从而导致三角面的很多顺时针逆时针顺序发生了改变，导致法向量不是经纬度组织时候所期望的。
-方法：1 通过墨卡托米为单位算法向量。
-     2 mkt 0-1坐标算的法向量根据 [-1,1,-1]的scale矩阵进行转换。
-*/
 // 统一转墨卡托坐标 米为单位的 坐标
 let positions_mkt = new Float32Array(positions.length);
 let position_mapbox_mkt = new Float32Array(positions.length);
@@ -132,10 +124,11 @@ for (let i = 0; i < positions.length; i = i + 3) {
     positions_mkt[i + 1] = coor3857[1];
     positions_mkt[i + 2] = positions[i + 2];
 }
-
 // 法向量用 墨卡托米为单位去计算，该坐标系下xyz轴与世界坐标系轴相同。
 // 如果用mapbox的mkt坐标算，因为其y轴进行了-1转换，导致position原来是顺时针的三角形逆时针了，方向反了，法向量也就错了。
 const normals = getPositionNormal(positions_mkt);
+
+const light_pt = fromLngLat([117.5,32.5],30000);
 
 class CustomeLayer {
     constructor() {
@@ -161,22 +154,29 @@ class CustomeLayer {
         layout(location=2) in vec4 a_color;
         uniform mat4 uPMatrix;
         uniform mat4 u_worldInverseTranspose;
+        // 点光源位置
+        uniform vec3 u_lightWorldPosition;
+
         out vec3 v_normal;
         out vec4 v_color;
+        out vec3 v_surfaceToLight;
         void main() {
           gl_Position = uPMatrix * vec4(a_position,1.0);
           v_normal = mat3(u_worldInverseTranspose)* a_normal;
+          //v_normal = a_normal;
           v_color = a_color;
+          v_surfaceToLight = u_lightWorldPosition - a_position;
         }`;
         const fs = `#version 300 es
         precision highp float;
         in vec3 v_normal;
-        uniform vec3 u_reverseLightDirection;
         in vec4 v_color;
+        in vec3 v_surfaceToLight;
         out vec4 outColor;
         void main() {
           vec3 normal = normalize(v_normal);
-          float light = dot(normal, u_reverseLightDirection);
+          vec3 surfaceToLightDirection = normalize(v_surfaceToLight);
+          float light = dot(normal, surfaceToLightDirection);
         
           outColor = v_color;
           outColor.rgb *= light;
@@ -209,11 +209,9 @@ class CustomeLayer {
 
 
         // set the light direction.
-        // 平行光方向 这个不是01世界坐标系，是正常webgl的xyz轴的方向设置
-        // 注意，normal是根据正常的xyz计算的，通过normal和平行光计算light，平行光也是正常的xyz轴。
-        // 这里平行光方向不是0-1墨卡托的世界坐标系坐标，顶点经过0-1墨卡托坐标计算后，y轴反了，导致三角面方向也乱了。
-        let light = [0.5, 0.7, 1];
-        gl.uniform3fv(this._drawModel.u_reverseLightDirection, light);
+        // 注意：点光源位置，mkt0-1坐标系，世界坐标系
+        let light = [light_pt.x,light_pt.y,light_pt.z];
+        gl.uniform3fv(this._drawModel.u_lightWorldPosition, light);
         //gl.uniformMatrix4fv(this._drawModel.u_modelMatrix, false, mat);
     }
     render(gl, matrix) {
@@ -226,7 +224,7 @@ class CustomeLayer {
         //地图旋转后，视图矩阵发生变化。为了还原回法向量所在的世界矩阵，所有的旋转和缩放都乘以-1
         let worldMatrix = mat4.fromXRotation([], -1 * pitch);
         mat4.rotateZ(worldMatrix, worldMatrix, -1 * angle);
-       
+     
         const worldInverseMatrix = mat4.invert([], worldMatrix);
         const worldInverseTransposeMatrix = mat4.transpose([], worldInverseMatrix);
         gl.uniformMatrix4fv(this._drawModel.u_worldInverseTranspose, false, worldInverseTransposeMatrix);

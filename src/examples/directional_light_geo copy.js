@@ -1,10 +1,9 @@
 import initMap from '../util/initMap';
 import uuid from '../util/uuid';
 import { createModel, createBuffer, bindAttribute } from '../util/webgl_util';
-import { mat4 } from 'gl-matrix';
+import { vec3,mat4 } from 'gl-matrix';
 import { getPositionNormal } from '../util/position_normal';
 import fromLngLat from '../util/fromLonLat';
-import proj4 from 'proj4';
 function degToRad(d) {
     return d * Math.PI / 180;
 }
@@ -108,34 +107,33 @@ const colors = new Float32Array([
     1, 0, 0, 1,
     1, 0, 0, 1
 ]);
-/*
-MapboxGL地图开发中，世界坐标系即：mkt0-1坐标。
-customeLayer里的matrix是 view+projection 变换
 
-通常开发时，地理三角面都是以经纬度+高度组织的，并根据里面和外面，三角面顺时针和逆时针方向组织。
-但在通过fromLngLat将三角面转换到0-1墨卡托(世界坐标系)的时候，
-y轴scale -1了，从而导致三角面的很多顺时针逆时针顺序发生了改变，导致法向量不是经纬度组织时候所期望的。
-方法：1 通过墨卡托米为单位算法向量。
-     2 mkt 0-1坐标算的法向量根据 [-1,1,-1]的scale矩阵进行转换。
-*/
 // 统一转墨卡托坐标 米为单位的 坐标
-let positions_mkt = new Float32Array(positions.length);
-let position_mapbox_mkt = new Float32Array(positions.length);
+
 for (let i = 0; i < positions.length; i = i + 3) {
-    const coor_mkt = fromLngLat([positions[i], positions[i + 1]], positions[i + 2]);
-    position_mapbox_mkt[i] = coor_mkt.x;
-    position_mapbox_mkt[i + 1] = coor_mkt.y;
-    position_mapbox_mkt[i + 2] = coor_mkt.z;
-    // 转经纬度
-    const coor3857 = proj4('EPSG:4326', 'EPSG:3857').forward([positions[i], positions[i + 1]]);
-    positions_mkt[i] = coor3857[0];
-    positions_mkt[i + 1] = coor3857[1];
-    positions_mkt[i + 2] = positions[i + 2];
+    const coor3857 = fromLngLat([positions[i], positions[i + 1]], positions[i + 2]);
+    positions[i] = coor3857.x;
+    positions[i + 1] = coor3857.y;
+    positions[i + 2] = coor3857.z;
 }
 
-// 法向量用 墨卡托米为单位去计算，该坐标系下xyz轴与世界坐标系轴相同。
-// 如果用mapbox的mkt坐标算，因为其y轴进行了-1转换，导致position原来是顺时针的三角形逆时针了，方向反了，法向量也就错了。
-const normals = getPositionNormal(positions_mkt);
+// mkt 0-1 坐标系计算法向量
+const normals = getPositionNormal(positions);
+
+const mat1 = mat4.fromScaling([],[1, -1, 1]);
+let normal1 = new Float32Array(normals.length);
+for (let i = 0; i < normals.length; i = i + 3) {
+    const coors = vec3.transformMat4([],[normals[i],normals[i + 1],normals[i + 2]],mat1)
+    normal1[i] = coors[0];
+    normal1[i + 1] = coors[1];
+    normal1[i + 2] = coors[2];
+}
+console.log(normal1);
+
+// 经纬度转mkt01,经过了(1, -1, 1)的视图变幻，在计算法向量时，三角形法向量由
+// 顺时针，逆时针顺序决定的，需要经过(-1,1,-1)反算回去才是真的法向量。
+const scale = [1, -1, 1];
+const mat = mat4.fromScaling([], scale.map(item => item * -1));
 
 class CustomeLayer {
     constructor() {
@@ -190,7 +188,7 @@ class CustomeLayer {
         this._vao = gl.createVertexArray();
         gl.bindVertexArray(this._vao);
         // 绑定坐标顶点
-        const positionBuffer = createBuffer(gl, gl.ARRAY_BUFFER, position_mapbox_mkt);
+        const positionBuffer = createBuffer(gl, gl.ARRAY_BUFFER, positions);
         bindAttribute(gl, positionBuffer, 0, 3);
         // 法向量
         const normalBuffer = createBuffer(gl, gl.ARRAY_BUFFER, normals);
@@ -209,9 +207,7 @@ class CustomeLayer {
 
 
         // set the light direction.
-        // 平行光方向 这个不是01世界坐标系，是正常webgl的xyz轴的方向设置
-        // 注意，normal是根据正常的xyz计算的，通过normal和平行光计算light，平行光也是正常的xyz轴。
-        // 这里平行光方向不是0-1墨卡托的世界坐标系坐标，顶点经过0-1墨卡托坐标计算后，y轴反了，导致三角面方向也乱了。
+        // 注意：片元着色器里直接用，都是世界坐标系
         let light = [0.5, 0.7, 1];
         gl.uniform3fv(this._drawModel.u_reverseLightDirection, light);
         //gl.uniformMatrix4fv(this._drawModel.u_modelMatrix, false, mat);
@@ -226,7 +222,9 @@ class CustomeLayer {
         //地图旋转后，视图矩阵发生变化。为了还原回法向量所在的世界矩阵，所有的旋转和缩放都乘以-1
         let worldMatrix = mat4.fromXRotation([], -1 * pitch);
         mat4.rotateZ(worldMatrix, worldMatrix, -1 * angle);
-       
+        mat4.multiply(worldMatrix, worldMatrix, mat);
+
+
         const worldInverseMatrix = mat4.invert([], worldMatrix);
         const worldInverseTransposeMatrix = mat4.transpose([], worldInverseMatrix);
         gl.uniformMatrix4fv(this._drawModel.u_worldInverseTranspose, false, worldInverseTransposeMatrix);

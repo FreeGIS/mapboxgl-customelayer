@@ -7,6 +7,7 @@ module.exports = [
    
     './examples/directional_light_model',
     './examples/directional_light_geo',
+    './examples/point_light_geo',
     './examples/depthtest',
     './examples/depthtest_light',
     './examples/geo_texture',
